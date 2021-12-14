@@ -901,3 +901,384 @@ namespace Alura.Filmes.App.Migrations
 
         }COPIAR CÓDIGO
 Observamos que a migração está vazia, apesar da modificação que acabamos de fazer na configuração. Adiante, veremos o porquê disso.
+
+
+
+
+
+
+06 - Totalizando o valor da compra
+PRÓXIMA ATIVIDADE
+
+João Carlos criou uma propriedade na classe Compra para informar o preço total da compra.
+
+public class Compra
+{
+    //...outras propriedades...
+    public Produto Produto { get; set; }
+    public int Quantidade { get; set; }
+    public double PrecoTotal { get; set; }
+}COPIAR CÓDIGO
+Quando adicionou a classe de compras no contexto Entity (através de uma propriedade do tipo DbSet<Compra>), percebeu que o EF criou um mapeamento indesejado para a propriedade PrecoTotal. Por quê?
+
+Selecione uma alternativa
+A convenção do Entity para descobrir as colunas de um tipo é procurar por todas propriedades públicas que possuem getters e setters.
+
+
+
+
+
+
+
+
+
+07 - Para saber mais: alternativas para ignorar o valor total da compra
+PRÓXIMA ATIVIDADE
+
+Você ainda tem duas alternativas para ignorar uma propriedade no Entity, no nosso caso o valor total da compra.
+
+A primeira é usar a anotação [NotMapped] na declaração da propriedade em questão.
+
+public class Compra
+{
+    //...outras propriedades...
+    public Produto Produto { get; set; }
+    public int Quantidade { get; set; }
+    [NotMapped]
+    public double PrecoTotal { get; set; }
+}COPIAR CÓDIGO
+A segunda é remover o setter da propriedade (como confirmado no exercício anterior, a convenção para descoberta de colunas procura por propriedades públicas com ambos getter e setter). Isso vai depender se a propriedade é de fato somente leitura. No nosso exemplo sim, então:
+
+public class Compra
+{
+    //...outras propriedades...
+    public Produto Produto { get; set; }
+    public int Quantidade { get; set; }
+    public double PrecoTotal
+    { 
+        get { return Produto.PrecoUnitario * Quantidade; } 
+    }
+}COPIAR CÓDIGO
+ DISCUTIR NO FORUM
+
+
+
+
+
+
+
+
+
+
+08 - Migração com código vazio
+PRÓXIMA ATIVIDADE
+
+Qual a causa da migração que o instrutor adicionou com o comando Add-Migration Enumerado estar vazia?
+
+Selecione uma alternativa
+
+O instrutor esqueceu de aplicar a configuração FilmeConfiguration na classe de contexto.
+
+
+O instrutor esqueceu de configurar a propriedade TextoClassificacao.
+
+
+Não houve mudanças na estrutura do banco de dados.
+
+
+
+
+
+
+
+
+
+09 - O modelo de dados do Entity
+
+Transcrição
+Anteriormente, criamos uma migração para trabalharmos com os enumerados, conforme a solução proposta no repositório do Entity Framework Core.
+
+Primeiro, fizemos a conversão, para em seguida criar duas propriedades: uma para enumerado e outra para string, em que ela está conectada ao banco relacional.
+
+Fizemos estas mudanças e criamos, em seguida, uma nova migração vazia.
+
+Na verdade, se olharmos no banco de dados, veremos que não há nenhuma mudança a ser feita. A tabela dbo.film tem uma coluna varchar(10) chamada rating com valor nulo, e possuí restrição definida. Portanto, não há nada que a migração possa fazer. A mudança foi feita no mundo Orientado a Objetos.
+
+A única mudança que houve envolveu uma outra classe, que também está na pasta Migrations, chamada AluraFilmesContextoModelSnapshot.
+
+Ela representa o modelo do Entity que realiza o mapeamento entre o mundo Orientado a Objetos e o mundo relacional. Isto é chamado de modelo, por isso, o nome do método em que fazemos todas as configurações via código é chamado OnModelCreating.
+
+Ele usa o conceito de modelo para ilustrar que representa o mapeamento, no modelo.
+
+Em Alura.Filmes.App.Migrations temos, justamente, este modelo.
+
+namespace Alura.Filmes.App.Migrations
+{
+    [DbContext(typeof(AluraFilmesContexto))]
+    partial class AluraFilmesContextoModelSnapshot : ModelSnapshot
+    {
+        protected override void BuildModel(ModelBuilder modelBuilder)
+        {
+#pragma warning disable 612, 618
+
+            modelBuilder
+                .HasAnnotation("ProductVersion", "2.0.0-rtm-26452")
+                .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+
+            modelBuilder.Entity("Alura.Filmes.App.Negocio.Ator", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnName("actor_id");
+
+                    b.Property<string>("PrimeiroNome")
+                        .IsRequired()
+                        .HasColumnsName("first_name")
+                        .HasColumnType("vrchar(45)");
+
+                    b.Property<string>("UltimoNome")
+                        .IsRequired()
+                        .HasColumnName("last_name")
+                        .HasColumnType("varchar(45)");
+
+                    b.Property<DateTime>("last_update")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime")
+                        .HasDefaultValueSql("getdate()");
+
+                    b.HasKey("Id");
+
+                b.HasAlternateKey("PrimeiroNome", "UltimoNome");
+
+                b.HasIndex("UltimoNome")
+                    .HasName("idx_actor_last_name");
+
+                b.ToTable("actor");
+
+        modelBuilder.Entity("Alura.Filmes.App.Negocio.Filme", b =>
+            {
+                b.Property<int>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnName("film_id");
+
+                b.Property<string>("AnoLancamento")
+                    .HasColumnName("release_year")
+                    .HasColumnType("varchar(4)");
+
+                b.Property<string>("Descricao")
+                    .HasColumnName("description")
+                    .HasColumnType("text");
+
+                b.Property<short>("Duracao")
+                    .HasColumnName("length");
+
+                b.Property<string>("TextoClassificacao")
+                    .HasColumnName("rating")
+                    .HasColumnType("varchar(10)");
+
+                b.Property<string>("Titulo")
+                    .IsRequired()
+                    .HasColumnType("title")
+                    .HasColumnType("varchar(255)");
+
+                b.Property<byte>("language_id");
+
+                b.Property<DateTime>("last_update")
+                    .HasColumnType("datetime");
+
+                b.Property<byte?>("original_language_id");
+
+                b.HasKey("Id");
+
+                b.HasIndex("language_id");COPIAR CÓDIGO
+Há um método chamado BuildModel:
+
+protected override void BuildModel(ModelBuilder modelBuilder)COPIAR CÓDIGO
+E em Alura.Filmes.App.Negocio.Ator podemos observar como é feito o mapeamento. No nome, vemos uma classe Ator, bem como as demais propriedades. Temos também a classe filme:
+
+modelBuilder.Entity("Alura.Filmes.App.Negocio.Filme", b =>COPIAR CÓDIGO
+Que contém uma propriedade, chamada TextoClassificacao, do tipo string, que está sendo mapeada para a coluna rating, e o tipo varchar(10):
+
+b.Property<string>("TextoClassificacao")
+    .HasColumnName("rating")
+    .HasColumnType("varchar(10)");COPIAR CÓDIGO
+Observamos que não há nenhuma propriedade do tipo Classificacao de enumerado. Isso porque o ignoramos deliberadamente.
+
+Portanto, o modelo do Entity representa todo o mapeamento que estamos fazendo, e gerará um modelo, a partir de todas as alterações que fizemos.
+
+Isso significa que não é necessário criar uma migração, porque o banco de dadaos não foi modificado.
+
+Para nos certificarmos disso, criaremos um código no programa, para a inclusão de um filme, e um select de um filme, para vermos o que acontece.
+
+Fecharemos todas as demais janelas e manteremos somente o programa aberto.
+
+Apagaremos as seguintes linhas, referentes ao código de conversão:
+
+var m10 = ClassificacaoIndicativa.MaioresQue18;
+Console.WriteLine(m10.ParaString());
+
+Console.WriteLine("G".ParaValor());COPIAR CÓDIGO
+Em seguida, faremos com que as seguintes linhas de código deixem de ser comentários, apagando as barras ("\") que as precedem:
+
+var filme = new Filme();
+filme.Titulo = "Senhor dos Anéis";
+filme.Duracao = 120;
+filme.AnoLancamento = "2000";
+filme.Classificacao = ClassificacaoIndicativa.Livre;
+filme.IdiomaFalado = contexto.Idioma.First();
+contexto.Entry(filme).Property("last_update").CurrentValue = DateTime.Now;
+
+contexto.filmes.Add(filme);
+contexto.SaveChanges();COPIAR CÓDIGO
+Porque, desta forma, já temos a criação de um filme. Vamos apenas alterar o nome do filme, e a classificação indicativa:
+
+contexto.LogSQLToConsole();
+
+var filme = new Filme();
+filme.Titulo = "Cassino Royale";
+filme.Duracao = 120;
+filme.AnoLancamento = "2000";
+filme.Classificacao = ClassificacaoIndicativa.MaiorQue14;
+filme.IdiomaFalado = contexto.Idioma.First();
+contexto.Entry(filme).Property("last_update").CurrentValue = DateTime.Now;
+
+contexto.filmes.Add(filme);
+contexto.SaveChanges();COPIAR CÓDIGO
+Assim, esperamos que o retorno no banco seja "R".
+
+Para conferirmos se está correto, criaremos uma variável filmeInserido, e buscaremos este filme que acabamos de inserir.
+
+contexto.LogSQLToConsole();
+
+var filme = new Filme();
+filme.Titulo = "Cassino Royale";
+filme.Duracao = 120;
+filme.AnoLancamento = "2000";
+filme.Classificacao = ClassificacaoIndicativa.MaiorQue14;
+filme.IdiomaFalado = contexto.Idioma.First();
+contexto.Entry(filme).Property("last_update").CurrentValue = DateTime.Now;
+
+contexto.filmes.Add(filme);
+contexto.SaveChanges();COPIAR CÓDIGO
+Além disso, criaremos um comando para que seja impressa no console a propriedade Classificacao, que é o tipo enumerado.
+
+var filmeInserido = contexto.Filmes.First(f => f.Titulo == "Cassino Royale");
+Console.WriteLine(filmeIserido.Classificacao);COPIAR CÓDIGO
+Inserimos o filme "Cassino Royale", com classificação indicativa para maiores de 14 anos. Com isso, esperamos que o console imprima a correspondência "R", ao executarmos a aplicação.
+
+Executaremos o programa.
+
+Em primeiro lugar, o programa fez a seleção do idioma, pegou a primeira opção e definiu como o idioma falado daquele filme:
+
+Executing DbCommand [Parameters-[], CommandType-'Text', CommandTimeout-'30']
+SELECT TOP(1) [l].[language_id], [l].[name], [l].[last_update]
+FROM [language] AS [l]
+
+Executing DbCommand (8ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT TOP(1) [l].[language_id], [l].[name], [l].[last_update]
+FROM [language] AS [l]COPIAR CÓDIGO
+Em seguida, foi feito o insert do filme:
+
+Executing DbCommand [Parameters=[@p0='?' (Size = 4), @p1 = '?' (Size = 8000), @p2='?', @p3='?' (Size = 10), @p4='?' (Size = 255), @p5='?' (Size = 1), @p6='?', @p7='?'], CommandType='Text', CommandTimeout='30']
+SET NOCOUNT ON;
+INSERT INTO [film] ([release year], [description], [length], [rating], [title], [language_id], [last_update], [original_language_id])
+VALUES (@p1, @p2, @p3, @p4, @p5, @p6, @p7);
+SELECT [film_id]
+FROM [film]
+WHERE @@ROWCOUNT = 1 AND [film_id] = scope_identity();
+
+Executed DbCommand (4ms) [Parameters=[@p0='?' (Size = 4), @p1 = '?' (Size = 8000), @p2='?', @p3='?' (Size = 10), @p4='?' (Size = 255), @p5='?' (Size = 1), @p6='?', @p7='?'], CommandType='Text', CommandTimeout='30']
+SET NOCOUNT ON;
+INSERT INTO [film] ([release year], [description], [length], [rating], [title], [language_id], [last_update], [original_language_id])
+VALUES (@p1, @p2, @p3, @p4, @p5, @p6, @p7);
+SELECT [film_id]
+FROM [film]
+WHERE @@ROWCOUNT = 1 AND [film_id] = scope_identity();
+
+A data reader was disposed.COPIAR CÓDIGO
+Após, foi feito um SELECT TOP(1):
+
+Executing DbCommand [Parameters-[], CommandType-'Text', CommandTimeout-'30']
+SELECT TOP(1) [f];[film_id], [f].[release_year], [f].[description], [f].[lenght], [f].[title], [f].[language_id], [f].[last_update], [f].[original_language_id]
+FROM [film] AS [f]
+WHERE [f].[title] = 'Cassino Royale'
+
+Executed DbCommand (2ms) [Parameters-[], CommandType-'Text', CommandTimeout-'30']
+SELECT TOP(1) [f];[film_id], [f].[release_year], [f].[description], [f].[lenght], [f].[title], [f].[language_id], [f].[last_update], [f].[original_language_id]
+FROM [film] AS [f]
+WHERE [f].[title] = 'Cassino Royale'
+
+A data reader was disposed.COPIAR CÓDIGO
+Por fim, foi exibida a classificação indicativa MaioresQue14.
+
+Vamos verificar se o valor corresponde àquele inserido no banco de dados.
+
+Abriremos o banco de dados dbo.film, localizado em "Pesquisador de Objetos do SQL Server > SQL Server > (localdb)\MSSQLLocalDB (SQL Server 13.0.4001 - DESKTOP-N51LB16\Caelum) > Banco de Dados > AluraFilmesTST > Tabelas > dbo.film".
+
+Clicaremos sobre o nome dbo.film com o botão direito do mouse, e selecionaremos a opção "Exibir Dados":
+
+ilustrando o menu que se abre ao clicarmos com o botao direito sobre a tabela filme, e, a opção exibir dados
+
+Com a tabela aberta, verificamos que a classificação do filme "Cassino Royale" é "R", o que corresponde, no nosso sistema, à classificação "Maiores Que 14".
+
+tabela contendo os dados do filme cassino royale, sendo o film_id, ano de lançamento, descrição, duração, titulo, última atualização, idioma, idioma original, e classificação
+
+Isso conclui o mapeamento do enumerado, fazendo uma restrição check, e guardando o valor correto na coluna "rating".
+
+Espero que tenha gostado. Finalizaremos o aprendizado com os exercícios a seguir.
+
+
+
+
+
+
+
+
+
+
+10 - O que aprendemos?
+PRÓXIMA ATIVIDADE
+
+Nessa aula você:
+
+analisou a convenção do Entity para mapeamento de enumerados, que é usar uma coluna do tipo inteiro
+aprendeu uma estratégia para mapear valores enumerados em strings com valores específicos (usando a coleção Dictionary)
+explorou as alternativas para fazer o Entity ignorar propriedades
+conheceu o ModelSnapshot, que representa o modelo de dados que o Entity vai usar para mapear os mundos OO e relacional
+
+
+
+
+
+
+11 - Consolidando os conhecimentos
+PRÓXIMA ATIVIDADE
+
+Chegou a hora de você seguir todos os passos realizados por mim durante esta aula. Caso já tenha feito, excelente. Se ainda não, é importante que você execute o que foi visto no vídeo para poder continuar com o próximo capítulo.
+
+No próximo capítulo vamos fazer o mapeamento de herança. Te encontro lá!
+
+
+
+
+
+
+
+12 - Projeto da aula atual
+PRÓXIMA ATIVIDADE
+
+Baixe o código-fonte do projeto até o momento!
+https://caelum-online-public.s3.amazonaws.com/706-efcore2/03/Alura.Filmes.Aula9.zip
+
+
+
+
+
+
+
+13 - Para saber mais: progresso do EF Core
+PRÓXIMA ATIVIDADE
+
+Acompanhe o progresso do Entity Framework Core através das issues abertas no seu repositório do Github: https://github.com/aspnet/EntityFrameworkCore/issues
+
+Tenha uma noção do seu roadmap olhando os próximos marcos: https://github.com/aspnet/EntityFrameworkCore/milestones

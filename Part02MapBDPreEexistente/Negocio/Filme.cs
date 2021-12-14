@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Part02MapBDPreEexistente.Extensions;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,7 +13,18 @@ namespace Part02MapBDPreEexistente.Negocio
         public string TituloFilme { get; set; }
         public string DescricaoFilme { get; set; }
         public string AnoLancamentoFilme { get; set; }
-        public ClassificacaoIndicativa Clasificacao { get; set; }
+
+
+
+        public string TextoClasificacao { get; private set; } //Propriedade mapeada
+        public ClassificacaoIndicativa Clasificacao           //Propriedade não mapeada  
+        {
+            get { return TextoClasificacao.ParaValor(); }
+            set { TextoClasificacao = value.ParaString(); }
+        }
+
+
+
         public short DuracaaoFilme { get; set; }
         public IList<FilmeAtor> Atores { get; set; }
 

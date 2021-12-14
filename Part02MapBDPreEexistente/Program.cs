@@ -15,14 +15,29 @@ namespace Part02MapBDPreEexistente
             //select *from filmeator
             using (var contexto = new AluraFilmesContext())
             {
-                                
                 contexto.LogSQLToConsole();
 
-                var livre = ClassificacaoIndicativa.MaioresQue18;
-                Console.WriteLine(livre.ParaString());
+                var filme = new Filme();
+                filme.TituloFilme = "A copia do livro";
+                filme.DuracaaoFilme = 120;
+                filme.AnoLancamentoFilme = "2000";
+                filme.Clasificacao = ClassificacaoIndicativa.Livre;
+                filme.IdiomaFalado = contexto.Idiomas.First();
+                contexto.Entry(filme).Property("last_update").CurrentValue = DateTime.Now;
+
+                contexto.Filmes.Add(filme);
+                contexto.SaveChanges();
+
+                var filmeInserido = contexto.Filmes.First(f => f.TituloFilme == "A copia do livro");
+                Console.WriteLine(filmeInserido.Clasificacao);
 
 
-                Console.WriteLine("G".ParaValor());
+
+
+                //contexto.LogSQLToConsole();
+                //var livre = ClassificacaoIndicativa.MaioresQue18;
+                //Console.WriteLine(livre.ParaString());
+                //Console.WriteLine("G".ParaValor());
 
 
 
@@ -49,14 +64,14 @@ namespace Part02MapBDPreEexistente
 
                 //contexto.LogSQLToConsole();
 
-                ////var idioma = new Idioma { Nome = "Hebraico"};
+                //var idioma = new Idioma { Nome = "Hebraico"};
 
                 //var filme = new Filme();
                 //filme.TituloFilme = "A Coisa é preta";
                 //filme.DuracaaoFilme = 120;
                 //filme.AnoLancamentoFilme = "2010";
-                //filme.Clasificacao = "Geral";
-                //filme.IdiomaFalado = contexto.Idiomas.First();
+                //filme.Clasificacao = "G";
+                //filme.IdiomaFalado = idioma;
                 //contexto.Entry(filme).Property("last_update").CurrentValue = DateTime.Now;
 
                 //contexto.Filmes.Add(filme);

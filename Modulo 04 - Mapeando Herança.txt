@@ -1,0 +1,715 @@
+01 - Mapeando herança
+Transcrição
+Olá, este é o primeiro vídeo da aula sobre mapeamento da herança.
+
+Abriremos o Banco de Dados legado, AluraFilmes, para visualizarmos as tabelas.
+
+Clicaremos em "Pesquisador de Objetos do SQL Server > SQL Server > (localdb)\MSSQLLocalDB (SQL Server 13.0.4001 - DESKTOP-N51LB16\Caelum) > Banco de Dados > AluraFilmes > Tabelas".
+
+Na lista, veremos que há duas tabelas sobre as quais ainda não falamos, a dbo.customer e dbo.staff, que em tradução para o português são, respectivamente, "cliente" e "funcionário".
+
+lista de tabelas contidas na pasta de mesmo nome, com destaque para customer e staff, que são aquelas com as quais ainda não trabalhamos
+
+Nesta aula, faremos o mapeamento destas duas tabelas.
+
+Pessoalmente, gosto de fazer o processo em ordem invertida. Por isso, começaremos utilizando o programa que desejamos testar.
+
+Em Alura.Filmes.App, removeremos as seguintes linhas de código, logo abaixo de contexto.LogSQLToConsole():
+
+var filme = new Filme ();
+filme.Titulo = "Cassino Royale";
+filme.Duracao = 120;
+filme.AnoLancamento = "2000";
+filme.Classificacao = ClassificacaoIndicativa.MaioresQue14;
+filme.IdiomaFalado = contexto.Idiomas.First();
+contexto.Entry(filme).Property("last_update").CurrentValue = DateTime.Now;
+
+contexto.Filmes.Add(filme);
+contexto.SaveChanges();
+
+var filmeInserido = contexto.Filmes.First(f => f.Titulo == "Cassino Royale");
+Console.WriteLine(filmeInserido.Classificacao);COPIAR CÓDIGO
+Em seguida, criaremos um foreach para listarmos todos os clientes contidos na tabela customer. Para isso, precisaremos utilizar uma propriedade DBSet chamada Clientes, na classe de contexto:
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+                foreach (var cliente in contexto.Clientes)
+                                {
+
+                                }COPIAR CÓDIGO
+Imprimiremos este item da lista no console:
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+                foreach (var cliente in contexto.Clientes)
+                                {
+                                    Console.WriteLine(cliente);
+                                }COPIAR CÓDIGO
+Feito isso, criaremos a propriedade DBSet DbSet<Cliente>Clientes, na classe contexto AluraFilmesContexto.cs:
+
+namespace Alura.Filmes.App.Dados
+{
+    public class AluraFilmesContexto : DbContext
+    {
+        public DbSet<Ator> Atores { get; set; }
+        public DbSet<Filme> Filmes { get; set; }
+        public DbSet<FilmeAtor> Elenco { get; set; }
+        public DbSet<Idioma> Idiomas { get; set; }
+        public DbSet<Cliente> Clientes { get; set; }
+
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            optionsBuilder.UseSqlServer("Server=(localdb)\\mssqllocaldb;Database=AluraFilmesTST;Trusted_connection=true;");
+        }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+         modelBuilder.ApplyConfiguration(new AtorConfiguration());
+         modelBuilder.ApplyConfiguration(new FilmeConfiguration());
+         modelBuilder.ApplyConfiguration(new FilmeAtorConfiguration());
+         modelBuilder.ApplyConfiguration(new IdiomaConfiguration());
+        }
+    }
+}COPIAR CÓDIGO
+Precisaremos criar a classe Cliente.
+
+Clicando com o botão direito do mouse sobre a pasta Negocio, em seguida selecionaremos "Adicionar > Classe".
+
+caminho para adicionar uma nova classe na pasta negocio
+
+Chamaremos a nova classe de Cliente.
+
+Ao ser criada, teremos o seguinte código:
+
+namespace Alura.Filmes.App.Negocio
+{
+    class Cliente
+    {
+    }
+}COPIAR CÓDIGO
+Tornaremos a classe pública, adicionando public antes da palavra class, resultando em:
+
+namespace Alura.Filmes.App.Negocio
+{
+    public class Cliente
+    {
+    }
+}COPIAR CÓDIGO
+Abriremos a classe cliente ("Pesquisador de Objetos do SQL Server > SQL Server > (localdb)\MSSQLLocalDB (SQL Server 13.0.4001 - DESKTOP-N51LB16\Caelum) > Banco de Dados > AluraFilmes > Tabelas > dbo.customer").
+
+Fixaremos o navegador de pastas na tela, clicando no símbolo de tachinha, na lateral superior direita da janela, vide imagem:
+
+tornando a janela fixa, clicando no icone de tachinha no canto superior direito
+
+Com isso, conseguiremos visualizar os dois mundos, Orientado a Objetos e Relacional, simultaneamente.
+
+Criaremos na classe Cliente uma propriedade Id:
+
+namespace Alura.Filmes.App.Negocio
+{
+    public class Cliente
+    {
+        public int Id { get; set; }
+    }
+}COPIAR CÓDIGO
+Seguindo a lista em "Pesquisador de Objetos do SQL Server > SQL Server > (localdb)\MSSQLLocalDB (SQL Server 13.0.4001 - DESKTOP-N51LB16\Caelum) > Banco de Dados > AluraFilmes > Tabelas > dbo.customer > Colunas" passaremos a incluir as propriedades.
+
+visualização da lista de colunas com first name, last name, email, active, create date e last update
+
+Criaremos uma propriedade chamada PrimeiroNome:
+
+public class Cliente
+{
+    public int Id { get; set; }
+    public string PrimeiroNome { get; set; }
+}COPIAR CÓDIGO
+E outra chamada UltimoNome:
+
+public class Cliente
+{
+    public int Id { get; set; }
+    public string PrimeiroNome { get; set; }
+    public string UltimoNome { get; set; }
+}COPIAR CÓDIGO
+Teremos também uma propriedade chamada Email:
+
+public class Cliente
+{
+    public int Id { get; set; }
+    public string PrimeiroNome { get; set; }
+    public string UltimoNome { get; set; }
+    public string Email { get; set; }
+}COPIAR CÓDIGO
+E, por fim, a propriedade chamada Ativo, que é um bool:
+
+public class Cliente
+{
+    public int Id { get; set; }
+    public string PrimeiroNome { get; set; }
+    public string UltimoNome { get; set; }
+    public string Email { get; set; }
+    public bool Ativo { get; set; }
+}COPIAR CÓDIGO
+As propriedades create_date e last_update não nos interessam para a classe Cliente.
+
+Uma observação - a chave primária de customer_id é do tipo tinyint, ou seja, um inteiro de um byte.
+
+Portanto, em vez de utilizarmos int em int Id, utilizaremos byte:
+
+public class Cliente
+{
+    public byte Id { get; set; }
+    public string PrimeiroNome { get; set; }
+    public string UltimoNome { get; set; }
+    public string Email { get; set; }
+    public bool Ativo { get; set; }
+}COPIAR CÓDIGO
+Retornaremos ao Alura.Filmes.App.Dados.
+
+Como podemos observar pela alteração da cor da fonte, a classe já está sendo compilada:
+
+visualização da classe cliente compilada no contexto
+
+Lembrando que estamos realizando o caminho inverso, aplicaremos uma configuração para uma instância de ClientConfiguration.
+
+namespace Alura.Filmes.App.Dados
+{
+    public class AluraFilmesContexto : DbContext
+    {
+        public DbSet<Ator> Atores { get; set; }
+        public DbSet<Filme> Filmes { get; set; }
+        public DbSet<FilmeAtor> Elenco { get; set; }
+        public DbSet<Idioma> Idiomas { get; set; }
+        public DbSet<Cliente> Clientes { get; set; }
+
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            optionsBuilder.UseSqlServer("Server=(localdb)\\mssqllocaldb;Database=AluraFilmesTST;Trusted_connection=true;");
+        }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+         modelBuilder.ApplyConfiguration(new AtorConfiguration());
+         modelBuilder.ApplyConfiguration(new FilmeConfiguration());
+         modelBuilder.ApplyConfiguration(new FilmeAtorConfiguration());
+         modelBuilder.ApplyConfiguration(new IdiomaConfiguration());
+                 modelBuilder.ApplyConfiguration(new ClienteConfiguration());
+        }
+    }
+}COPIAR CÓDIGO
+Como esta classe ainda não existe, deveremos criá-la.
+
+Com o cursor sobre ClienteConfiguration utilizaremos o atalho "Ctrl + .", dessa forma o Visual Studio nos ajudará na criação da classe.
+
+Clicaremos em "Gerar class 'ClienteConfiguration' no novo arquivo".
+
+gerando a classe cliente configuration com o atalha ctrl ponto
+
+Com isso, a classe surgirá na janela lateral direita, dentro da pasta "Dados".
+
+visualização da pasta dados contendo a nova cliente configuration
+
+Daremos um duplo clique sobre o nome da nova classe, e veremos o seguinte código:
+
+namespace Alura.Filmes.App.Dados
+{
+    internal class ClienteConfiguration : IEntityTypeConfiguration<object>
+    {
+    }
+}COPIAR CÓDIGO
+Tornaremos a classe pública:
+
+namespace Alura.Filmes.App.Dados
+{
+    public class ClienteConfiguration : IEntityTypeConfiguration<object>
+    {
+    }
+}COPIAR CÓDIGO
+Como podemos observar, a implementação do IEntityTypeConfiguration automaticamente. O próximo passo será definirmos a classe, que será Cliente:
+
+namespace Alura.Filmes.App.Dados
+{
+    public class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
+    {
+    }
+}COPIAR CÓDIGO
+Importaremos a classe.
+
+Com o atalho "Ctrl + .", selecionaremos a opção "Implementar Interface":
+
+visualização da janela com opção de implementar interface na classe cliente
+
+Interface esta que é, na realidade, o método Configure.
+
+namespace Alura.Filmes.App.Dados
+{
+    public class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
+    {
+        public void Configure(EntityTypeBuilder<Cliente> builder)
+        {
+            throw new System.NotImplementedException();
+        }
+    }
+}COPIAR CÓDIGO
+A entidade Cliente é mapeada na tabela customer, como vemos em builder.ToTable("customer"):
+
+namespace Alura.Filmes.App.Dados
+{
+    public class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
+    {
+        public void Configure(EntityTypeBuilder<Cliente> builder)
+        {
+            builder.ToTable("customer");
+        }
+    }
+}COPIAR CÓDIGO
+A propriedade definida pela expressão c => c.PrimeiroNome será mapeada na coluna first_name:
+
+namespace Alura.Filmes.App.Dados
+{
+    public class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
+    {
+        public void Configure(EntityTypeBuilder<Cliente> builder)
+        {
+            builder.ToTable("customer");
+
+            builder
+                .Property(c => c.PrimeiroNome)
+                .HasColumnName("first_name")
+        }
+    }
+}COPIAR CÓDIGO
+Ela terá como tipo um varchar(45):
+
+            builder
+                .Property(c => c.PrimeiroNome)
+                .HasColumnName("first_name")
+                .HasColumnType("varchar(45)")COPIAR CÓDIGO
+Além disso, será not null:
+
+            builder
+                .Property(c => c.PrimeiroNome)
+                .HasColumnName("first_name")
+                .HasColumnType("varchar(45)")
+                .IsRequired();COPIAR CÓDIGO
+O mesmo acontecerá para a propriedade last_name, logo abaixo da que acabamos de construir:
+
+namespace Alura.Filmes.App.Dados
+{
+    public class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
+    {
+        public void Configure(EntityTypeBuilder<Cliente> builder)
+        {
+            builder.ToTable("customer");
+
+            builder
+                .Property(c => c.PrimeiroNome)
+                .HasColumnName("first_name")
+                .HasColumnType("varchar(45)")
+                .IsRequired();
+
+            builder
+                .Property(c => c.PrimeiroNome)
+                .HasColumnName("last_name")
+                .HasColumnType("varchar(45)")
+                .IsRequired();
+        }
+    }
+}COPIAR CÓDIGO
+Seguindo no mesmo código, abaixo da propriedade last_name, trabalharemos com a propriedade Email, representada pela expressão lambda c => c.Email:
+
+            builder
+                .Property(c => c.PrimeiroNome)
+                .HasColumnName("first_name")
+                .HasColumnType("varchar(45)")
+                .IsRequired();
+
+            builder
+                .Property(c => c.PrimeiroNome)
+                .HasColumnName("last_name")
+                .HasColumnType("varchar(45)")
+                .IsRequired();
+
+            builder
+                .Property(c => c.Email)COPIAR CÓDIGO
+Que tem como nome de coluna email:
+
+            builder
+                .Property(c => c.Email)
+                .HasColumnName("email")COPIAR CÓDIGO
+E, como tipo, um varchar(50), que pode ser nula, por isso não será acrescentada mais nenhuma linha após a definição do tipo:
+
+            builder
+                .Property(c => c.Email)
+                .HasColumnName("email")
+                .HasColumnType("varchar(50)");COPIAR CÓDIGO
+Teremos uma propriedade, abaixo de Email, denominada active, que foi definida em Ativo:
+
+            builder
+                .Property(c => c.Email)
+                .HasColumnName("email")
+                .HasColumnType("varchar(50)");
+
+            builder
+                .Property(c => c.Ativo)COPIAR CÓDIGO
+Já que boolean é convertido para bit, não será necessário mais declarações.
+
+Por fim, definiremos as shadow properties.
+
+Abaixo de Ativo, teremos a propriedade do tipo DateTime, chamada create_date:
+
+            builder
+                .Property(c => c.Ativo)
+
+            builder
+                .Property<DateTime>("create_date")COPIAR CÓDIGO
+Com o atalho "Ctrl + .", importaremos o System em DateTime, clicando na opção "using System":
+
+importando o system para date time, vemos as opções que surgem apos o uso do atalho ctrl ponto, onde selecionaremos using system
+
+Esta propriedade tem um tipo denominado datetime, e tem como default a função do SQL Server chamada "getdate":
+
+            builder
+                .Property<DateTime>("create_date")
+                .HasColumnType("datetime")
+                .HasDefaultValueSql("getdate()")COPIAR CÓDIGO
+E, é not null, portanto:
+
+            builder
+                .Property(c => c.PrimeiroNome)
+                .HasColumnName("first_name")
+                .HasColumnType("varchar(45)")
+                .IsRequired();
+
+            builder
+                .Property(c => c.PrimeiroNome)
+                .HasColumnName("last_name")
+                .HasColumnType("varchar(45)")
+                .IsRequired();
+
+            builder
+                .Property(c => c.Email)
+                .HasColumnName("email")
+                .HasColumnType("varchar(50)");
+
+            builder
+                .Property(c => c.Ativo)
+
+            builder
+                .Property<DateTime>("create_date")
+                .HasColumnType("datetime")
+                .HasDefaultValueSql("getdate()")
+                .IsRequired();COPIAR CÓDIGO
+Criaremos uma segunda shadow property, denominada last_update
+
+            builder
+                .Property(c => c.PrimeiroNome)
+                .HasColumnName("first_name")
+                .HasColumnType("varchar(45)")
+                .IsRequired();
+
+            builder
+                .Property(c => c.PrimeiroNome)
+                .HasColumnName("last_name")
+                .HasColumnType("varchar(45)")
+                .IsRequired();
+
+            builder
+                .Property(c => c.Email)
+                .HasColumnName("email")
+                .HasColumnType("varchar(50)");
+
+            builder
+                .Property(c => c.Ativo)
+
+            builder
+                .Property<DateTime>("create_date")
+                .HasColumnType("datetime")
+                .HasDefaultValueSql("getdate()")
+                .IsRequired();
+
+            builder
+                .Property<DateTime>("last_update")
+                .HasColumnType("datetime")
+                .HasDefaultValueSql("getdate()")
+                .IsRequired();COPIAR CÓDIGO
+Faltou inserirmos o nome colune da propriedade Ativo, que é active:
+
+            builder
+                .Property(c => c.PrimeiroNome)
+                .HasColumnName("first_name")
+                .HasColumnType("varchar(45)")
+                .IsRequired();
+
+            builder
+                .Property(c => c.UltimoNome)
+                .HasColumnName("last_name")
+                .HasColumnType("varchar(45)")
+                .IsRequired();
+
+            builder
+                .Property(c => c.Email)
+                .HasColumnName("email")
+                .HasColumnType("varchar(50)");
+
+            builder
+                .Property(c => c.Ativo)
+                .HasColumnName("active");
+
+            builder
+                .Property<DateTime>("create_date")
+                .HasColumnType("datetime")
+                .HasDefaultValueSql("getdate()")
+                .IsRequired();
+
+            builder
+                .Property<DateTime>("last_update")
+                .HasColumnType("datetime")
+                .HasDefaultValueSql("getdate()")
+                .IsRequired();COPIAR CÓDIGO
+Com isso, retornaremos à classe Cliente:
+
+namespace Alura.Filmes.App.Negocio
+
+public class Cliente
+{
+    public byte Id { get; set; }
+    public string PrimeiroNome { get; set; }
+    public string UltimoNome { get; set; }
+    public string Email { get; set; }
+    public bool Ativo { get; set; }
+}COPIAR CÓDIGO
+Inseriremos a seguinte override string:
+
+public class Cliente
+{
+    public byte Id { get; set; }
+    public string PrimeiroNome { get; set; }
+    public string UltimoNome { get; set; }
+    public string Email { get; set; }
+    public bool Ativo { get; set; }
+
+    public override string ToString()
+    {
+        return $"Cliente ({Id}): {PrimeiroNome} {UltimoNome} - {Ativo}";
+    }
+}COPIAR CÓDIGO
+Partiremos para Alura.Filmes.App.Dados, onde alteraremos o banco de dados de AluraFilmesTST para AluraFilmes, que é o banco legado.
+
+namespace Alura.Filmes.App.Dados
+{
+    public class AluraFilmesContexto : DbContext
+    {
+        public DbSet<Ator> Atores { get; set; }
+        public DbSet<Filme> Filmes { get; set; }
+        public DbSet<FilmeAtor> Elenco { get; set; }
+        public DbSet<Idioma> Idiomas { get; set; }
+        public DbSet<Cliente> Clientes { get; set; }
+
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            optionsBuilder.UseSqlServer("Server=(localdb)\\mssqllocaldb;Database=AluraFilmes;Trusted_connection=true;");
+        }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.ApplyConfiguration(new AtorConfiguration());
+            modelBuilder.ApplyConfiguration(new FilmeConfiguration());
+            modelBuilder.ApplyConfiguration(new FilmeAtorConfiguration());
+            modelBuilder.ApplyConfiguration(new IdiomaConfiguration());
+            modelBuilder.ApplyConfiguration(new ClienteConfiguration());
+        }
+    }
+}COPIAR CÓDIGO
+Retornaremos ao programa Alura.Filmes.App:
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+                foreach (var cliente in contexto.Clientes)
+                {
+                    Console.WriteLine(cliente);
+                }COPIAR CÓDIGO
+Executaremos o programa.
+
+Surgiu a seguinte mensagem de erro:
+
+FROM [customer] AS [C]
+
+Failed executing DbCommand (4ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [c].[Id], [c].[active], [c].[email], [c].[last_name], [c].[UltimoNome], [c].[create_date], [c].[last_update]
+FROM [customer] AS [c]
+
+Exceção Sem Tratamento: System.Data.SqlClient.SqlException: Invalid column name 'Id'.COPIAR CÓDIGO
+O que significa que esquecemos de mapear a propriedade Id.
+
+Retornaremos ao Alura.Filmes.App.Dados, onde inseriremos o referido builder:
+
+builder.ToTable("customer");
+
+builder
+    .Property(c => c.Id)COPIAR CÓDIGO
+Que tem como chave priméria, o customer_id:
+
+builder.ToTable("customer");
+
+builder
+    .Property(c => c.Id)
+    .HasColumnName("customer_id");COPIAR CÓDIGO
+Executaremos novamente o programa.
+
+Vemos que temos um select na tabela de customer, que foi mapeada para a classe Cliente, e suas respectivas propriedades.
+
+Faremos o mesmo processo para os funcionários.
+
+Em Alura.Filmes.App daremos continuidade ao código, lembrando que estamos fazendo a construção no sentido contrário.
+
+Utilizaremos um DbSet chamado Funcionarios (que ainda iremos criar), e, imprimiremos aquele que está sendo listado.
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+                foreach (var cliente in contexto.Clientes)
+                {
+                    Console.WriteLine(cliente);
+                }
+
+                                foreach (var func in contexto.Funcionarios)
+                                {
+                                    Console.WriteLine(func);
+                                }
+                        }
+                }
+        }
+}COPIAR CÓDIGO
+Para melhor organizarmos, imprimiremos Clientes e Funcionários antes das respectivas propriedades.
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+                Console.WriteLine("Clientes");
+                                foreach (var cliente in contexto.Clientes)
+                {
+                    Console.WriteLine(cliente);
+                }
+
+                                Console.WriteLine("\nFuncionários");
+                                foreach (var func in contexto.Funcionarios)
+                                {
+                                    Console.WriteLine(func);
+                                }
+                        }
+                }
+        }
+}COPIAR CÓDIGO
+Retornaremos para Alura.Filmes.App.Dados, onde criaremos o DbSet de Funcionarios:
+
+namespace Alura.Filmes.App.Dados
+{
+    public class AluraFilmesContexto : DbContext
+    {
+        public DbSet<Ator> Atores { get; set; }
+        public DbSet<Filme> Filmes { get; set; }
+        public DbSet<FilmeAtor> Elenco { get; set; }
+        public DbSet<Idioma> Idiomas { get; set; }
+        public DbSet<Cliente> Clientes { get; set; }
+                public DbSet<Funcionario> Funsionarios { get; set; }COPIAR CÓDIGO
+Criaremos uma nova classe, clicando com o botão direito do mouse sobre a pasta Negocio, e selecionando "Adicionar > Classe". Denominaremos a classe como Funcionario.
+
+Uma vez criada, teremos o seguinte código:
+
+namespace Alura.Filmes.App.Negocio
+{
+    class Funcionario
+    {
+    }
+}COPIAR CÓDIGO
+Faremos com que a classe seja pública:
+
+namespace Alura.Filmes.App.Negocio
+{
+    public class Funcionario
+    {
+    }
+}COPIAR CÓDIGO
+Dentro dela, teremos o staff. Para isso, abriremos a respectiva tabela em "Pesquisador de Objetos do SQL Server > SQL Server > (localdb)\MSSQLLocalDB (SQL Server 13.0.4001 - DESKTOP-N51LB16\Caelum) > Banco de Dados > AluraFilmes > Tabelas > dbo.staff".
+
+Dentro da tabela, teremos a seguinte lista na pasta de Colunas:
+
+staff_id (PK, tinyint, não nulo)
+first_name (varchar(45), não nulo)
+last_name(varchar(45), não nulo)
+email (varchar(50), nulo)
+active (bit, não nulo)
+username (varchar(16), não nulo)
+password (varchar(40), nulo)
+last_update (datetime, não nulo)COPIAR CÓDIGO
+Retornaremos à classe Funcionario.
+
+Nossa convenção diz que temos uma coluna Id para a chave primária:
+
+namespace Alura.Filmes.App.Negocio
+{
+    public class Funcionario
+    {
+        public int Id { get; set; }
+    }
+}COPIAR CÓDIGO
+Uma propriedade string chamada PrimeiroNome:
+
+    public class Funcionario
+    {
+        public int Id { get; set; }
+        public string PrimeiroNome { get; set; }
+    }
+}COPIAR CÓDIGO
+Outra propriedade string, chamada UltimoNome:
+
+    public class Funcionario
+    {
+        public int Id { get; set; }
+        public string PrimeiroNome { get; set; }
+        public string UltimoNome { get; set; }
+    }
+}COPIAR CÓDIGO
+Como podemos observar, as classes Cliente e Funcionario têm uma série de propriedades em comum.
+
+Isso nos remete ao conceito de herança, ou seja, temos uma classe abstrata, ancestral destas duas, que compartilha o código destas propriedades citadas acima. É o que veremos adiante.
+

@@ -70,10 +70,12 @@ namespace Part02MapBDPreEexistente.Dados.Configuration
 
             //Mapeamento de classificação
             builder
-                .Property(f => f.Clasificacao)
+                .Property(f => f.TextoClasificacao)
                 .HasColumnName("rating")
                 .HasColumnType("varchar(10)");
 
+            //Classificação não Mapeamento
+            builder.Ignore(f => f.Clasificacao);
         }
     }
 }
