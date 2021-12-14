@@ -1,0 +1,583 @@
+01 - Visão geral do curso
+Transcrição
+Olá, eu sou Daniel Portugal e esta é a segunda parte do curso de Entity Framework Core Avançado.
+
+Abordaremos alguns temas relacionados a bancos de dados relacionais. Como o Entity trabalha com os seguintes temas:
+
+Índices;
+Restrições "Unique";
+Restrições "Check";
+Selects Complexos;
+Views;
+Stores Procedures; e
+Herança.
+Eventualmente, é necessário fazermos selects mais elaborados, que o Entity não consegue suportar, então veremos como podemos assumir o controle da sua geração, dentro to tópico "Selects Complexos".
+
+Veremos também a herança, como o Entity a mapeia para o mundo relacional.
+
+
+02 - Criando índices com o Entity
+Transcrição
+Nesta aula, veremos se o Entity possui alguma convenção para descobrir ou criar índices.
+
+Para isso, há a seguinte regra: para toda chave estrangeira, ele criará um índice.
+
+Se olharmos, por exemplo, a migration de idiomas trabalhada na parte 1 do curso, veremos que há a criação de duas chaves estrangeiras para o idioma falado e para o idioma original:
+
+namespace Alura.Filmes.App.Migrations
+{
+    public partial class Idioma : Migration
+    {
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+                migrationBuilder.AddColumn<byte>(
+                    name: "language_id",
+                    table: "film",
+                    type: "tinyint",
+                    nullable: false,
+                    defaultValue: (byte)0);
+
+                migrationBuilder.AddColumn<byte>(
+                    name: "original_language_id",
+                    table: "film",
+                    type: "tinyint",
+                    nullable: true);COPIAR CÓDIGO
+Mais adiante, no mesmo código, veremos que foram criados dois índices, um para cada coluna de chave estrangeira, ou seja, uma para language_id e outra para original_language_id.
+
+migrationBuilder.CreateIndex(
+    name: "IX_film_language_id",
+    table: "film",
+    column: "language_id");
+
+migrationBuilder.CreateIndex(
+    name: "IX_film_original_language_id",
+    table: "film",
+    column: "original_language_id");COPIAR CÓDIGO
+Portanto, sua convenção é a seguinte: se houver uma chave estrangeira, também será criado um índice.
+
+Outra convenção é no nome conferido ao índice, ele será sempre formado seguindo o seguinte padrão: prefixo "IX", underscore (_), nome do tipo da classe dependente, e nome da coluna onde ele será colocado. Por exemplo:
+
+IX_film_original_language_idCOPIAR CÓDIGO
+Se olharmos o banco legado AluraFilmes, na tabela de atores dbo.actor terá o índice para o último nome, a coluna chamada last name. Para visualizar o índice, selecionaremos "Pesquisador de Objetos do SQL Server > Alura Filmes > dbo.actor > Índices", na lateral esquerda da tela.
+
+tabela actor contendo o indice para ultimo nome
+
+Como a coluna não é uma chave estrangeira, o Entity não criará um novo índice para ela. Precisaremos assumir a sua criação.
+
+Veremos como é possível fazer isso, utilizando o Entity.
+
+Na documentação do Entity Framework, relacionada a "índices", veremos que não é possível realizar este tipo de configuração por meio de Annotations.
+
+No texto original: Indexes can not be configured using Data Annotations.
+
+Teremos que utilizar a API Fluent, ou seja, o código escrito no método OnModelCreate.
+
+Voltaremos ao Visual Studio.
+
+Criaremos um índice para a coluna Last Name na tabela de atores, na entidade representada pela classe Ator.
+
+Por isso, modificaremos a configuração da classe Ator, Configure(EntityTypeBuilder<Ator> builder).
+
+namespace Alura.Filmes.App.Dados
+{
+    public class AtorConfiguration : IEntityTypeConfiguration<Ator>
+    {
+        public void Configure(EntityTypeBuilder<Ator> builder)
+        {
+            builder
+                .ToTable("actor")
+
+            builder
+                .Property(a => a.Id)
+                .HasColumnName("actor_id");
+
+            builder
+                .Property(a => a.PrimeiroNome)
+                .HasColumnName("first_name")
+                .HasColumnType("varchar(45)")
+                .IsRequired();
+
+            builder
+                .Property(a => a.UltimoNome)
+                .HasColumnName("last_name")
+                .HasColumnType("varchar(45)")
+                .IsRequired();
+
+            builder
+                .Property<DateTime>("last_update")
+                .HasColumnType("datetime")
+                .HasDefaultValueSql("getdate()")
+                .IsRequired();
+        }
+    }
+}COPIAR CÓDIGO
+Declararemos, para a entidade Ator, um índice HasIndex representado pela propriedade UltimoNome, logo abaixo do builder de last_update.
+
+            builder
+                .Property<DateTime>("last_update")
+                .HasColumnType("datetime")
+                .HasDefaultValueSql("getdate()")
+                .IsRequired();
+
+                builder
+                .HasIndex(a => a.UltimoNome);
+        }
+    }
+}COPIAR CÓDIGO
+Como podemos observar, o nome criado diverge da convenção estabelecida, que é: idx_actor_last_name.
+
+Posteriormente, veremos o procedimento para alterá-lo, já que este idx não segue o padrão, que no caso é ix. Por enquanto, deixaremos como está.
+
+Em seguida, aprenderemos a gerar o script de imigração para podermos ver a criação deste índice, e qual nome será dado a ele.
+
+Abriremos o gerenciador de pacotes, selecionando "Ferramentas > Gerenciador de Pacotes do NuGet > Console do Gerenciador de Pacotes", e criaremos uma migração, que chamaremos de IndiceAtorUltimoNome.
+
+Versão 4.3.1.4445 do Host do Console do Gerenciador de Pacotes
+
+Digite 'get-help NuGet' para ver todos os comandos disponíveis do NuGet.
+
+PM> Add-Migration IndiceAtorUltimoNomeCOPIAR CÓDIGO
+Com isso, será criado um CreateIndex cujo nome é `IX_actor_last_name".
+
+namespace Alura.Filmes.App.Migrations
+{
+    public partial class IndiceAtorUltimoNome : migrationBuilder)
+    {
+        migrationBuilder.CreateIndex(
+            name: "IX_actor_last_name",
+            table: "actor",
+            column: "last_name");
+}COPIAR CÓDIGO
+O nome difere daquele exibido anteriormente idx_actor_last_name, como podemos observar:
+
+nome contendo idx no inicio, em vez de ix
+
+Abriremos o AtorConfiguration.cs para alterarmos o nome, utilizando o método HasName("idx_actor_last_name"):
+
+namespace Alura.Filmes.App.Dados
+{
+    public class AtorConfiguration : IEntityTypeConfiguration<Ator>
+    {
+        public void Configure(EntityTypeBuilder<Ator> builder)
+        {
+            builder
+                .ToTable("actor")
+
+            builder
+                .Property(a => a.Id)
+                .HasColumnName("actor_id");
+
+            builder
+                .Property(a => a.PrimeiroNome)
+                .HasColumnName("first_name")
+                .HasColumnType("varchar(45)")
+                .IsRequired();
+
+            builder
+                .Property(a => a.UltimoNome)
+                .HasColumnName("last_name")
+                .HasColumnType("varchar(45)")
+                .IsRequired();
+
+            builder
+                .Property<DateTime>("last_update")
+                .HasColumnType("datetime")
+                .HasDefaultValueSql("getdate()")
+                .IsRequired();
+
+            builder
+                .HasIndex(a => a.UltimoNome);
+                .HasName("idx_actor_last_name");
+        }
+    }
+}COPIAR CÓDIGO
+Abriremos novamente o gerenciador de pacotes do NuGet, selecionando "Ferramentas > Gerenciador de Pacotes do NuGet > Console do Gerenciador de Pacotes", e removeremos a migração, com o comando PM> Remove Migration:
+
+Versão 4.3.1.4445 do Host do Console do Gerenciador de Pacotes
+
+Digite 'get-help NuGet' para ver todos os comandos disponíveis do NuGet.
+
+PM> Add-Migration IndiceAtorUltimoNome
+To undo this action, use Remove-Migration.
+PM> Remove-MigrationCOPIAR CÓDIGO
+Removendo a migração, surgirá a seguinte mensagem de erro "Referência de objeto não definida para uma instância de um objeto", como podemos verificar abaixo:
+
+PM> Remove-Migration
+Removing migration '20171003203257_IndiceAtorUltimoNome'.
+Reverting model snapshot.
+Done.
+System.NullReferenceException: Referência de objeto não definida para uma instância de um objeto.
+    em Microsoft.EntityFrameworkCore.Tools.Json.Escape(String text)
+    em Microsoft.EntityFrameworkCore.Tools.Commands.MigrationsRemoveCommand.ReportJsonResults(IDictionary result)
+    em Microsoft.EntityFrameworkCore.Tools.Commands.MigrationsRemoveCommand.Execute()
+    em Microsoft.DotNet.Cli.CommandLine.CommandLineApplication.Execute(String[] args)
+    em Microsoft.entityFrameworkCore.Tools.Program.Main(String[] args)
+Referência de objeto não definida para uma instância de um objeto.
+{
+    "migrationFile": "C:\\Users\\Caelum\\documents\\visual studio 2017\\Projects\\Alura.Filmes.App\\Migrations\\20171003203257_IndiceAtorUltimoNome.Designer.cs",COPIAR CÓDIGO
+Resolveremos isso, apagando a 20171003203257_IndiceAtorUltimoNome.cs. Basta clicarmos sobre ela com o botão direito do mouse, e selecionar a opção "Excluir" e "Ok".
+
+apagando item para consertar erro
+
+Este erro ocorre, mais comumente, nesta versão do Entity Framework.
+
+Adicionaremos novamente a migração:
+
+PM> Remove-Migration
+Removing migration '20171003203257_IndiceAtorUltimoNome'.
+Reverting model snapshot.
+Done.
+System.NullReferenceException: Referência de objeto não definida para uma instância de um objeto.
+    em Microsoft.EntityFrameworkCore.Tools.Json.Escape(String text)
+    em Microsoft.EntityFrameworkCore.Tools.Commands.MigrationsRemoveCommand.ReportJsonResults(IDictionary result)
+    em Microsoft.EntityFrameworkCore.Tools.Commands.MigrationsRemoveCommand.Execute()
+    em Microsoft.DotNet.Cli.CommandLine.CommandLineApplication.Execute(String[] args)
+    em Microsoft.entityFrameworkCore.Tools.Program.Main(String[] args)
+Referência de objeto não definida para uma instância de um objeto.
+{
+    "migrationFile": "C:\\Users\\Caelum\\documents\\visual studio 2017\\Projects\\Alura.Filmes.App\\Migrations\\20171003203257_IndiceAtorUltimoNome.Designer.cs",
+PM> Add-Migration IndiceAtorUltimoNome
+To undo this action, use Remove-Migration.
+PM>COPIAR CÓDIGO
+Como podemos observar, feito isso, o nome estará correto, no Alura.Filmes.App.Migrations:
+
+namespace Alura.Filmes.App.Migrations
+{
+    public partial class IndiceAtorUltimoNome : Migration
+    {
+        protected override void Up(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.CreateIndex(
+            name: "idx_actor_last_name",
+            table: "actor",
+            column: "last_name");
+}COPIAR CÓDIGO
+Adiante, haverá exercícios para criação de índices.
+
+
+
+
+
+
+
+
+
+03 - Erro ao executar o comando Remove-Migration
+PRÓXIMA ATIVIDADE
+
+Repare que em algumas situações a execução do comando Remove-Migration gera uma exceção NullReferenceException. Esse é um bug conhecido da versão 2.0 do EF Core e será corrigido na versão 2.0.3. A solução por enquanto é excluir manualmente a unidade csharp que representa a migration.
+
+
+
+
+
+
+
+04 - Convenção do EF Core para criação de índices
+PRÓXIMA ATIVIDADE
+
+Avalie as sentenças abaixo em verdadeiro/falso e marque a alternativa correta.
+
+I - O EF Core cria um índice para cada chave estrangeira encontrada.
+
+II - O nome estabelecido para os índices encontrados no modelo de dados é definido usando a convenção idx_<classe que contém o índice>_<nome da coluna>.
+
+III - O nome do índice só é determinado pelo EF Core se o desenvolvedor não chamar o método HasName() via Fluent API.
+
+IV - Não é possível configurar índices usando anotações.
+
+Selecione uma alternativa
+
+As alternativas (I), (III) e (IV) estão corretas.
+
+ DIS
+
+
+
+
+
+
+
+
+05 - Configurando restrições UNIQUE
+
+Transcrição
+No código em que vamos trabalhar nesta aula, temos duas variáveis ator:
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+
+                contexto.LogSQLToConsole();
+
+                var ator1 = new Ator { PrimeiroNome = "Emma", UltimoNome = "Watson" };
+                var ator2 = new Ator { PrimeiroNome = "Emma", UltimoNome = "Watson"};
+                contexto.Atores.AddRange(ator1, ator2);
+                contexto.SaveChanges();
+
+                var emmaWatson = contexto.Atores
+                    .Where(a => a.PrimeiroNome == "Emma" && a.UltimoNome == "Watson");
+                Console.WriteLine($"Total de atores encontrados: {emmaWatson.Count()}.");COPIAR CÓDIGO
+Que contém as mesmas informações de ator, ou seja, o mesmo primeiro nome, e mesmo último nome.
+
+Estas variáveis estarão inseridas no banco de dados.
+
+Verificamos o número de atores, na coleção, que contém esta mesma informação. Para isso serve a seguinte parte do nosso código:
+
+var emmaWatson = contexto.Atores
+    .Where(a => a.PrimeiroNome == "Emma" && a.UltimoNome == "Watson");
+Console.WriteLine($"Total de atores encontrados: {emmaWatson.Count()}.");COPIAR CÓDIGO
+Executaremos o programa.
+
+Veremos que foi feito um insert, nestas duas variáveis ator, e retornará um total de atores encontrados igual a dois.
+
+retorno da console mostrando o total de atores encontrados
+
+Considerando que não queremos permitir na base a existência de atores homônimos, ou seja, com o mesmo nome e sobrenome, faremos uma regra de negócio para impedir o funcionamento deste código que acabamos de executar.
+
+Para isso, criaremos uma restrição Unique para estas duas colunas, first_name e last_name.
+
+Na documentação do Entity Framework, a restrição Unique é chamada de Alternate Keys. Como se fosse a chame primiária, só que alternativa.
+
+No texto original: "A unique constraint is introduced for each alternate key in the model".
+
+Existe uma convenção, apenas em relação ao nome.
+
+No texto original: "By convention, the index and constraint that are introduced for an alternate key will be named AK_<type name>_<property name>. For composite alternate keys <property name> becomes an underscore separated list of property names".
+
+Ao criar uma Alternate Key, ela será nomeada respeitando o sufixo AK, seguido do nome do tipo e, em seguida, o nome de todas as propriedades utilizadas naquela restrição, com o underscore (_).
+
+Exemplo: AK_<type name>_<property name>.
+
+Na documentação, vemos que só é possível fazermos isso, utilizando o método On Model Creating.
+
+No texto original: "You can use Fluent API to configure the index and constraint name for an alternate key".
+
+É o que faremos a seguir, na configuração de ator.
+
+Posteriormente, executaremos a aplicação, para nos certificarmos de que a restrição foi implementada com sucesso.
+
+Abriremos a configuração de ator, com dois cliques sobre seu nome AtorConfiguration.cs.
+
+namespace. Alura.Filmes.App.Dados
+{
+  public class AtorConfiguration : IEntityTypeConfiguration<Ator>
+    {
+      public void Configure(EntityTypeBuilder<Ator> builder)
+        {
+          builder
+              .ToTable("actor")
+
+          builder
+              .Property(a => a.Id)
+              .HasColumnName("actor_id");
+
+          builder
+              .Property(a => a.PrimeiroNome)
+              .HasColumnName("first_name")
+              .HasColumnType("varchar(45)")
+              .IsRequired();
+
+          builder
+              .Property(a => a.UltimoNome)
+              .HasColumnName("last_name")
+              .HasColumnType("varchar(45)")
+              .IsRequired();
+
+          builder
+              .Property<DateTime>("last_update")
+              .HasColumnType("datetime")
+              .HasDefaultValueSql("getdate()")
+              .IsRequired();
+
+          builder
+              .HasIndex(a => a.UltimoNome)
+              .HasName("idx_actor_last_name");COPIAR CÓDIGO
+Criaremos, após o builder de idx_actor_last_name, a chave alternativa HasAlternateKey que será composta de duas propriedades, a PrimeiroNome e a UltimoNome:
+
+          builder
+              .HasIndex(a => a.UltimoNome)
+              .HasName("idx_actor_last_name");
+
+          builder
+              .HasAlternateKey(a => new { a.PrimeiroNome, a.UltimoNome });COPIAR CÓDIGO
+Feito isso, podemos gerar a migração e, em seguida, fazer o update do database, para que isso seja inserido no banco de dados, e assim seja possível executar o programa e verificar se surgirá um erro.
+
+Criaremos um script para migrar a restrição no banco.
+
+Selecionaremos "Ferramentas > Gerenciador de Pacotes do NuGet > Console do Gerenciador de Pacotes" na barra de menu superior, para abrirmos o console.
+
+Chamaremos de UniqueAtorPrimeiroUltimoNome.
+
+PM> Add-Migration IndiceAtorUltimoNome
+To undo this action, use Remove-Migration
+PM> Add.Migration UniqueAtorPrimeiroUltimoNome
+To undo this action, use Remove-Migration
+PM>COPIAR CÓDIGO
+Com a migração criada, o código ficará da seguinte forma:
+
+namespace Alura.Filmes.App.Migrations
+{
+  public partial class UniqueAtorPrimeiroUltimoNome : Migration
+    {
+      protected override void Up(MigrationBuilder migrationBuilder)
+        {
+
+          migrationBuilder.AddUniqueConstraint(
+          name: "AK_actor_first_name_last_name",
+          table: "actor",
+          columns: new[] { "first_name", "last_name"});COPIAR CÓDIGO
+Observamos que o nome seguiu a convenção estabelecida, conforme vimos anteriormente: AK_actor_first_name_last_name.
+
+Utilizaremos o banco AluraFilmesTST e, abrindo os dados da tabela dbo.actor, veremos as duas colunas que inserimos anteriormente, quais sejam, as duas que contém os dados da atriz Emma Watson.
+
+tabela de atores alura filmes tst, que contem os dados dos atores tom hanks e emma watson, esta ultima repetida duas vezes
+
+Se aplicarmos a restrição Unique, resultará em erro - pois as duas coleções existem internamente.
+
+Vamos excluir estes dois nomes, selecionando os dados e utilizando a tecla "Delete". Surgirá uma caixa de diálogo, onde basta confirmarmos clicando em "ok".
+
+deletando as duas linhas com os dados da atriz emma watson
+
+Em seguida, fecharemos a janela.
+
+É importante não esquecermos deste passo, caso contrário, ocorrerá um erro no momento em que a restrição Unique for aplicada.
+
+Faremos um Update-Database na base AluraFilmesTST, que estamos utilizando para evoluir o banco, juntamente com a aplicação.
+
+Serão aplicados dois índices, o IndiceAtorUltimoNome e UniqueAtorPrimeiroUltimoNome.
+
+PM> Add-Migration IndiceAtorUltimoNome
+To undo this action, use Remove-Migration
+PM> Add.Migration UniqueAtorPrimeiroUltimoNome
+To undo this action, use Remove-Migration
+PM>Update-Database
+Applying migration '20171003210825_IndiceAtorUltimoNome'.
+Applying migration '20171003211112_UniqueAtorPrimeiroUltimoNome'.
+Done.COPIAR CÓDIGO
+Com isso, esperamos que o programa não funcione mais.
+
+Tentaremos executá-lo e veremos que ocorreu um erro.
+
+mensagem de erro exibida apos execucao da restricao unique pela primeira vez
+
+Em tradução livre do inglês, temos que a instância do tipo 'Ator' não pode ser rastreada porque uma outra instância com a mesma chave já está sendo rastreada.
+
+No texto original: "The instance of entity type 'Ator' cannot be tracked because another instance with the same key value for ('PrimeiroNome','UltimoNome') is already being tracked".
+
+A restrição Unique foi aplicada antes de ser feito o insert. Ao incluir o segundo Ator houve um erro, porque já estava sendo trabalhado o modelo de restrição, e já havia sido gerada a exceção.
+
+Isto significa que nossa restrição Unique funcionou, e colocamos nossa regra utilizando o Entity.
+
+Partiremos agora para os exercícios, para fixar estes conceitos que acabamos de aprender.
+
+
+
+
+
+
+
+
+
+
+
+06 - Um Sméagol já é o bastante!
+PRÓXIMA ATIVIDADE
+
+Beto configurou uma restrição UNIQUE para a propriedade Nome da classe Personagem assim:
+
+public void Configure(EntityTypeBuilder<Personagem> builder)
+{
+    builder
+        .ToTable("lotr_characters");
+
+    builder
+        .Property(p => p.Id)
+        .HasColumnName("character_id");
+
+    builder
+        .Property(p => p.Nome)
+        .HasColumnName("character_name")
+        .HasColumnType("varchar(60)")
+        .IsRequired();
+
+    builder
+        .HasAlternateKey(p => p.Nome);
+}COPIAR CÓDIGO
+Contudo, a política da empresa que o contratou para implementar o sistema exige que o nome de todas as restrições UNIQUE sigam o formato UNIQUE_<nome da coluna>. Assinale a alternativa que corretamente implementa essa política.
+
+Selecione uma alternativa
+builder
+   .HasAlternateKey(p => p.Nome)
+   .HasName("unique_character_name");
+
+
+
+
+
+
+
+07 - Não chegou no banco de dados?
+PRÓXIMA ATIVIDADE
+
+Repare no código do programa abaixo:
+
+static void Main(string[] args)
+{
+    using (var contexto = new AluraFilmesContexto())
+    {
+        contexto.StartLogSqlToConsole();
+
+        var ator1 = new Ator { PrimeiroNome = "Emma", UltimoNome = "Watson" };
+        var ator2 = new Ator { PrimeiroNome = "Emma", UltimoNome = "Watson" };
+        contexto.Atores.AddRange(ator1, ator2);
+        //contexto.SaveChanges();
+    }
+}COPIAR CÓDIGO
+Quando ele é executado, a exceção representada pela pilha abaixo é lançada.
+
+Exceção Sem Tratamento: System.InvalidOperationException: The instance of entity type 'Ator' cannot be tracked because another instance with the same key value for {'PrimeiroNome', 'UltimoNome'} is already being tracked. When attaching existing entities, ensure that only one entity instance with a given key value is attached. Consider using 'DbContextOptionsBuilder.EnableSensitiveDataLogging' to see the conflicting key values.
+   em Microsoft.EntityFrameworkCore.ChangeTracking.Internal.IdentityMap`1.Add(TKey key, InternalEntityEntry entry)
+   em Microsoft.EntityFrameworkCore.ChangeTracking.Internal.NullableKeyIdentityMap`1.Add(InternalEntityEntry entry)
+   em Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.StartTracking(InternalEntityEntry entry)
+   em Microsoft.EntityFrameworkCore.ChangeTracking.Internal.InternalEntityEntry.SetEntityState(EntityState oldState, EntityState newState, Boolean acceptChanges)
+   em Microsoft.EntityFrameworkCore.ChangeTracking.Internal.InternalEntityEntry.SetEntityState(EntityState entityState, Boolean acceptChanges, Boolean forceStateWhenUnknownKey)
+   em Microsoft.EntityFrameworkCore.ChangeTracking.Internal.EntityGraphAttacher.PaintAction(EntityEntryGraphNode node)
+   em Microsoft.EntityFrameworkCore.ChangeTracking.Internal.EntityEntryGraphIterator.TraverseGraph(EntityEntryGraphNode node, Func`2 handleNode)
+   em Microsoft.EntityFrameworkCore.ChangeTracking.Internal.EntityGraphAttacher.AttachGraph(InternalEntityEntry rootEntry, EntityState entityState, Boolean forceStateWhenUnknownKey)
+   em Microsoft.EntityFrameworkCore.DbContext.SetEntityStates(IEnumerable`1 entities, EntityState entityState)
+   em Microsoft.EntityFrameworkCore.DbContext.AddRange(IEnumerable`1 entities)
+   em Microsoft.EntityFrameworkCore.DbContext.AddRange(Object[] entities)
+   em Microsoft.EntityFrameworkCore.Internal.InternalDbSet`1.AddRange(TEntity[] entities)COPIAR CÓDIGO
+Repare que o código que persiste os objetos no banco de dados está comentado. Porque o erro ocorreu, uma vez que o banco de dados não foi atingido, e como consequência não disparou a execução da restrição UNIQUE?
+
+Selecione uma alternativa
+
+Quando o comando Add-Migration com a configuração da restrição foi executado, o Entity a incluiu em seu modelo de dados (via snapshot). No momento em que o método AddRange() foi chamado, o modelo foi validado, e uma de suas regras (no caso a restrição unique) não foi cumprida, levando ao lançamento da exceção.
+
+
+
+
+
+08 - Consolidando os conhecimentos
+PRÓXIMA ATIVIDADE
+
+Chegou a hora de você seguir todos os passos realizados por mim durante esta aula. Caso já tenha feito, excelente. Se ainda não, é importante que você execute o que foi visto no vídeo para poder continuar com o próximo capítulo.
+
+No próximo capítulo vamos conhecer as restrições do tipo CHECK no Entity. Te encontro lá!
+
+
+
+
+
+
+09 - Projeto da aula atual
+PRÓXIMA ATIVIDADE
+
+Baixe o código-fonte do projeto até o momento!
+https://caelum-online-public.s3.amazonaws.com/706-efcore2/01/Alura.Filmes.Aula7.zip

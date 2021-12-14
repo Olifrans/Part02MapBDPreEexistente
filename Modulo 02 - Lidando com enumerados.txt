@@ -1,0 +1,903 @@
+01 - Valores fixos em uma propriedade
+
+Transcrição
+Anteriormente, questionamos a existência de algum recurso no C# que ajudasse o consumidor da classe Filme, ao proibir a inserção de uma string incorreta em filme.Classificacao, uma vez que só são permitidos valores fixos, pré-determinados.
+
+Estes valores (classificações indicativas) constam no banco legado e, como estão seguindo o padrão americano, foi feita uma adaptação livre para corresponder ao sistema brasileiro.
+
+A tabela final ficou da seguinte forma, com um total de cinco valores:
+
+tabela contendo classificação indicativa dos filmes, on de G é livre, PG é não recomendado para menores de 10 anos, PG-13 é não recomendado para menores de 13 anos, R é não recomendado para menores de 14 anos e NC-17 é não recomendado para menores de 18 anos
+
+Qual recurso podemos utilizar para restringir a propriedade Classificacao a estes cinco valores? Os enumerados, no C#.
+
+Criaremos um enumerado para substituir um tipo string na propriedade Classificacao.
+
+Na pasta negócio ("Alura.Filmes.App > Negócio"), clicaremos com o botão direito e selecionaremos "Negocio > Adicionar > Classe..." para criarmos um enumerado.
+
+Surgirá a seguinte tela:
+
+criando o enumerado denominado classificacao indicativa
+
+O chamaremos de ClassificacaoIndicativa e, em seguida, clicaremos em "Adicionar".
+
+Em Alura.Filmes.App.Negocio, substituiremos a declaração class pela declaração de enumerado public enum e, abaixo, inseriremos os valores conforme a tabela anterior:
+
+namespace Alura.Filmes.App.Negocio
+{
+
+    public enum ClassificacaoIndicativa
+    {
+        Livre,
+        MaioresQue10,
+        MaioresQue13,
+        MaioresQue14,
+        MaioresQue18
+    }
+}COPIAR CÓDIGO
+Como referência, incluiremos ao lado, em comentários, a correspondência de cada um de acordo com os valores do banco legado, ou seja, seguindo a classificação americana:
+
+namespace Alura.Filmes.App.Negocio
+{
+    public enum ClassificacaoIndicativa
+    {
+        Livre,        //G
+        MaioresQue10, //PG
+        MaioresQue13, //PG-13
+        MaioresQue14, //R
+        MaioresQue18 //NC-17
+    }
+}COPIAR CÓDIGO
+Com isso, substituiremos na classe Filme o tipo da propriedade Classificacao para ClassificacaoIndicativa.
+
+namespace Alura.Filmes.App.Negocio
+{
+        public class Filme
+        {
+            public int Id { get; set; }
+            public string Titulo { get; set; }
+            public string Descricao { get; set; }
+            public string AnoLancamento { get; set; }
+            public short Duracao { get; set; }
+            public ClassificacaoIndicativa Classificacao' { get; set; }
+            public IList<FilmeAtor> Atores { get; set; }
+            public Idioma IdiomaFalado { get; set; }
+            public Idioma IdiomaOriginal { get; set; }
+
+            public Filme()
+            {
+                Atores = new List<FilmeAtor>();
+            }
+
+            public override string ToString()
+            {
+                return $"Filme ({Id}): {Titulo} - {AnoLancamento}";
+            }
+        }
+}COPIAR CÓDIGO
+Isso fará com que seja necessário alterarmos a propriedade filme.Classificacao em nosso programa AluraFilmesContexto.
+
+Este é o objetivo, ajudar o consumidor da classe Filmea criar instâncias da classe, especificamente, para a propriedade Classificacao.
+
+Portanto, em vez da string "Qualquer", teremos de inserir, necessariamente, algum valor de classificação indicativa. Como ClassificacaoIndicativa.Livre:
+
+class Program
+{
+    static void Main(string[] args)
+    {
+        using (var contexto = new AluraFilmesContexto())
+        {
+            contexto.LogSQLToConsole();
+
+            var filme = new Filme();
+            filme.Titulo = "Senhor dos Anéis";
+            filme.Duracao = 120;
+            filme.AnoLancamento = "2000";
+            filme.Classificacao = ClassificacaoIndicativa.Livre;
+            filme.IdiomaFalado = contexto.Idiomas.First();
+            contexto.Entry(filme).Property("last_update").CurrentValue = DateTime.Now;
+
+            contexto.Filmes.Add(filme);
+            contexto.SaveChanges();
+        }
+    }
+}COPIAR CÓDIGO
+Assim, é possível criarmos uma instância com apenas cinco valores de classificação indicativa.
+
+Como o Entity Framework interpreta um enumerado? Como tentará mapear isso? Quais são as convenções, ou a convenção, que será utilizada?
+
+Para descobrirmos isto, geraremos uma nova migração, que nos permitirá entender qual a convenção utilizada para fazer a descoberta da propriedade do tipo ClassificacaoIndicativa.
+
+Abriremos o Console do NuGet, selecionando na barra de menu superior "Ferramentas > Gerenciador de Pacotes NuGet > Console do Gerenciador de Pacortes".
+
+Limparemos o texto presente.
+
+Em seguida, declararemos:
+
+PM> Add-Migration EnumeradoCOPIAR CÓDIGO
+Surgirá um aviso, informando que a operação foi realizada mas que pode resultar em perda de dados, já que estamos fazendo a alteração de uma coluna.
+
+PM>Add-Migration Enumerado
+An operation was scaffolded that may result in the loss of data. Please review the migration for accuracy.
+To undo this action, use Remove-Migration;
+PM>COPIAR CÓDIGO
+No código, vemos que foi alterada a coluna para um tipo int, na tabela dbo.film, cujo nome é "rating", tipo "varchar(10)", não anulável, e que anteriormente tinha o typeof(string), "varchar(10)", e era anulável.
+
+namespace Alura.Filmes.App.Migrations
+{
+    public partial class Enumerado : Migration
+    {
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.AlterColumn<int>(
+                name: "rating",
+                table: "film",
+                type: "varchar(10)",
+                nullable: false,
+                oldClrType: typeof(string),
+                oldType: "varchar(10)",
+                oldNullable: true);
+            }COPIAR CÓDIGO
+Por isso é importante revisarmos a migração, com precisão.
+
+Está sendo transformado de um tipo string para um tipo int.
+
+Um tipo enumerado pode ser convertido para inteiro, convertendo cada valor, na ordem que está descrita, nas posições 0, 1, 2, 3 e 4, que correspondem, respectivamente, a livre, maiores que 10, maiores que 13, maiores que 14 e maiores que 18, vide lista abaixo:
+
+namespace Alura.Filmes.App.Negocio
+{
+    public enum ClassificacaoIndicativa
+    {
+        Livre,        //G
+        MaioresQue10, //PG
+        MaioresQue13, //PG-13
+        MaioresQue14, //R
+        MaioresQue18; //NC-17
+    }
+}COPIAR CÓDIGO
+A convenção do Entity, para mapeamento de enumerados, é criar uma coluna do tipo inteiro.
+
+O problema é que nosso banco legado não possui uma coluna "rating" do tipo inteiro, mas sim varchar(10). E possui valores, como aqueles descritos acima.
+
+Portanto, esta convenção do Entity não nos atende. Precisaremos fazer uma configuração que trate desta questão, que é o que veremos adiante.
+
+
+
+
+
+
+
+
+02 - Convenção do Entity para enumerados
+PRÓXIMA ATIVIDADE
+
+Selecione a alternativa que representa corretamente a convenção do Entity para mapeamento de um tipo enumerado declarado na classe abaixo.
+
+public class Produto
+{
+    //...outras propriedades...
+    public EstadoProduto EstadoAtual { get; set; }
+}COPIAR CÓDIGO
+Selecione uma alternativa
+
+migrationBuilder.AddColumn<int>(
+    name: "EstadoAtual",
+    table: "produtos",
+    type: "int",
+    nullable: false,
+    defaultValue: 0
+);
+
+
+
+
+
+03 - Configurando enumerados
+Nesta aula, daremos continuidade ao problema proposto anteriormente.
+
+Apesar de queremos utilizar as melhores práticas de orientação a objeto, colocando o tipo enumerado na propriedade Classificacao, o Entity guarda no banco de dados o valor inteiro relacionado ao valor do enumerado.
+
+Inclusive, na migração que criamos para podermos verificar isso, o Entity alterou a coluna de um tipo string para um tipo int:
+
+namespace Alura.Filmes.App.Migrations
+{
+    public partial class Enumerado : Migration
+    {
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+
+            migrationBuilder.AlterColumn<int>(
+                name:"rating",
+                table: "film",
+                type: "varchar(10)",
+                nullable: false,
+                oldClrType: typeof(string),
+                oldType: "varchar(10)",
+                oldNullable: true);
+            }COPIAR CÓDIGO
+Em contrapartida, no banco legado, a coluna de classificação na tabela de filmes dbo.film, é um varchar(10), com uma restrição ("Pesquisador de Objetos do SQL Server > SQL Server > (localdb)\MSSQLLocalDB (SQL Server 13.0.4001 - DESKTOP-N51LB16\Caelum) > Banco de Dados > AlurafilmesTST > Tabelas > Restrição > check_rating) para validar os cinco valores de classificação indicativa, ou seja, não pode ser 0, 1, 2, 3, e 4, como o Entity tentaria converter, por causa do enumerado.
+
+Portanto temos um conflito entre o banco legado e as melhores práticas de orientação ao objeto com os Enumerados.
+
+O Entity não suporta o armazenamento do string relacionado ao enumerado no banco de dados. Isto é uma questão presente no repositótio do Entity Framework Core, de número 1381.
+
+A issue está fechada porque foi agrupada em uma maior, que é a 242.
+
+Nesta página, há diversos comentários com propostas de solução. Dentre elas, uma se destacou, e é o que vamos tentar implementar agora.
+
+Ela passa por duas partes.
+
+Em primeiro lugar, faremos a conversão de enumerado para string no código C#.
+
+Na segunda parte, teremos uma propriedade para guardar o string, e a utilizaremos no Entity, que é a coluna rating. Adicionalmente, haverá uma propriedade para criarmos as instâncias de filme que tem o tipo enumerado, e faremos com que ela não seja mapeada no Entity, ou seja, fique escondida.
+
+No texto original: "You could do the conversion in code in the entity and map the underlying string property using EF (you can make the property private and still map it) and leave the enum property unmapped (e. g. with [NotMapped])".
+
+ DISCUTIR NO FORUM
+P
+
+
+
+
+
+
+
+
+
+
+04 - Convertendo enumerados para string
+Transcrição
+Nesta aula, daremos continuidade à resolução do problema proposto anteriormente, seguindo a sugestão presente no repositório do Entity Framework.
+
+A primeira etapa é remover a migração que altera o tipo da coluna "rating" para int, a 20171004002608_Enumerado.cs:
+
+namespace Alura.Filmes.App.Migrations
+{
+    public partial class Enumerado : Migration
+    {COPIAR CÓDIGO
+Abriremos o console, em "Ferramentas > Gerenciador de Pacotes do NuGet > Console do Gerenciador de Pacotes".
+
+Utilizaremos o comando Remove Migration:
+
+Versão 4.3.1.4445 do Host do Console do Gerenciador de Pacotes
+
+Digite 'get-help NuGet' para ver todos os comandos disponíveis do NuGet.
+
+PM> Remove-MigrationCOPIAR CÓDIGO
+Veremos que surgiu um erro de conversão do JSON:
+
+Referência de objeto não definida para uma instância de um objeto.COPIAR CÓDIGO
+Para solucionar isto, excluiremos a classe. Clicaremos com o botão direito do mouse sobre seu nome, e selecionaremos "Excluir", e em seguida "OK" para confirmar.
+
+exclusao da classe enumerado, tela mostrando o clique com o botão direito sobre o nome da classe e a opção excluir
+
+Escreveremos um código C# que converterá o valor de cada enumerado, para uma string correspondente.
+
+Colocaremos o código que já havia, em comentários:
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+
+                //var filme = new Filme();
+                //filme.Titulo = "Senhor dos Anéis";
+                //filme.Duracao = 120;
+                //filme.AnoLancamento = "2000";
+                //filme.Classificacao = ClassificacaoIndicativa.Livre;
+                //filme.IdiomaFalado = contexto.Idiomas.First();
+                //contexto.Entry(filme).Property("last_update").CurrentValue = DateTime.Now;
+
+                //contexto.Filmes.Add(filme);
+                //contexto.SaveChanges();COPIAR CÓDIGO
+Em seguida, criaremos uma variável que armazenará um valor do enumerado, no caso ClassificacaoIndicativa.Livre, além disso, queremos que a variável do tipo string seja igual ao valor "G", vide a correspondência com os valores americanos:
+
+namespace Alura.Filmes.App.Negocio
+{
+    public enum ClassificacaoIndicativa
+    {
+        Livre,         //G
+        MaiorQue10, //PG
+        MaiorQue13, //PG-13
+        MaiorQue14, //R
+        MaiorQue18  //NC-17
+    }
+}COPIAR CÓDIGO
+Portanto, o código ficará assim:
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+                var livre = ClassificacaoIndicativa.Livre;
+                string textoLivre = "G";
+
+                Console.WriteLine(livre.ToString());
+
+
+                //var filme = new Filme();
+                //filme.Titulo = "Senhor dos Anéis";
+                //filme.Duracao = 120;
+                //filme.AnoLancamento = "2000";
+                //filme.Classificacao = ClassificacaoIndicativa.Livre;
+                //filme.IdiomaFalado = contexto.Idiomas.First();
+                //contexto.Entry(filme).Property("last_update").CurrentValue = DateTime.Now;
+
+                //contexto.Filmes.Add(filme);
+                //contexto.SaveChanges();COPIAR CÓDIGO
+Com isso esperamos que, ao imprimirmos a conversão da variável livre, seja impresso o valor "G".
+
+Para isso, queremos que a classe enumerado tenha sua funcionalidade ampliada, de modo que consiga converter seus valores fixos em uma string associada.
+
+Utilizaremos um recurso do C#, que já foi utilizado para fazermos o log do SQL no console, que é o método de extensão.
+
+Nele, indicaremos que para uma instância de um enumerado do tipo ClassificacaoIndicativa, haverá a conversão, com um método ParaString()) - mas o nome pode ser qualquer um - onde, no seu interior, será realizada a conversão.
+
+Para criá-lo, teremos uma pasta onde já foram inseridas todas as funcionalidades que estamos adicionando.
+
+Criaremos uma nova classe, selecionando "Extensions > Adicionar > Classe...", e ela se chamará ClassificacaoIndicativaExtensions.
+
+O método de extensão é feito por meio de uma classe estática, cujo nome é formado pela denominação da classe que pretendemos estender, seguido do sufixo "extensions".
+
+O resultado será:
+
+namespace Alura.Filmes.App.Extensions
+{
+    public static class ClassificacaoIndicativaExtensions
+    {
+    }
+}COPIAR CÓDIGO
+Trata-se de uma classe estática, sendo assim, o método também será. Nela, inseriremos o retorno desejado, que no caso é uma string, com o nome que colocamos anteriormente, ou seja ParaString.
+
+namespace Alura.Filmes.App.Extensions
+{
+    public static class ClassificacaoIndicativaExtensions
+    {
+        public static string ParaString()
+    }
+}COPIAR CÓDIGO
+Para que isso se torne, de fato, um método estático, precisaremos inserir, como primeiro argumento, a classe que pretendemos estender. No using, importaremos a classe ClassificacaoIndicativa, e chamaremos de valor.
+
+namespace Alura.Filmes.App.Extensions
+{
+    public static class ClassificacaoIndicativaExtensions
+    {
+        public static string ParaString(this ClassificacaoIndicativa valor)
+    }
+}COPIAR CÓDIGO
+Em seguida, criaremos um retorno que pode ser qualquer elemento, no caso, inseriremos a letra "G".
+
+namespace Alura.Filmes.App.Extensions
+{
+    public static class ClassificacaoIndicativaExtensions
+    {
+        public static string ParaString(this ClassificacaoIndicativa valor)
+        {
+            return "G";
+        }
+    }
+}COPIAR CÓDIGO
+Isso conclui a criação do método.
+
+Retornando ao namespace Alura.Filmes.App, importaremos o método de extensão para o contexto.LogSQLToConsole():
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+                var livre = ClassificacaoIndicativa.Livre;
+                string textoLivre = "G";
+
+                Console.WriteLine(livre.ParaString());
+
+
+                //var filme = new Filme();
+                //filme.Titulo = "Senhor dos Anéis";
+                //filme.Duracao = 120;
+                //filme.AnoLancamento = "2000";
+                //filme.Classificacao = ClassificacaoIndicativa.Livre;
+                //filme.IdiomaFalado = contexto.Idiomas.First();
+                //contexto.Entry(filme).Property("last_update").CurrentValue = DateTime.Now;
+
+                //contexto.Filmes.Add(filme);
+                //contexto.SaveChanges();COPIAR CÓDIGO
+Neste ponto, o método já foi reconhecido como de extensão, como consta no tool tip.
+
+Colocaremos em comentário o string textoLivre = "G":
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+                var livre = ClassificacaoIndicativa.Livre;
+                //string textoLivre = "G";
+
+                Console.WriteLine(livre.ParaString());
+
+
+                //var filme = new Filme();
+                //filme.Titulo = "Senhor dos Anéis";
+                //filme.Duracao = 120;
+                //filme.AnoLancamento = "2000";
+                //filme.Classificacao = ClassificacaoIndicativa.Livre;
+                //filme.IdiomaFalado = contexto.Idiomas.First();
+                //contexto.Entry(filme).Property("last_update").CurrentValue = DateTime.Now;
+
+                //contexto.Filmes.Add(filme);
+                //contexto.SaveChanges();COPIAR CÓDIGO
+Executaremos o programa. Surgirá uma tela em que será exibido o "G", conforme colocamos.
+
+Só que esta ainda não é a solução final. Do jeito que está, se alterarmos a classificação indicativa em ClassificacaoIndicativa:
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+                var livre = ClassificacaoIndicativa.MaiorQue10;
+                //string textoLivre = "G";COPIAR CÓDIGO
+Ele ainda assim retornará o "G", porque foi pré-determinado em nosso método extensão:
+
+namespace Alura.Filmes.App.Extensions
+{
+'public static class ClassificacaoIndicativaExtensions
+{
+    public static string ParaString(this ClassificacaoIndicativa valor)
+        {
+            return "G";
+        }
+    }
+}COPIAR CÓDIGO
+O que queremos é que, se por exemplo, tivermos uma classificação MaiorQue10, isso seja convertigo para "PG".
+
+Para isso, precisaremos trabalhar especificamente o "de, para".
+
+Um método mais complexo de se atingir isso, seria criando diversos if's, ou seja, caso haja A, B será verdadeiro, e assim por diante. Entretanto, isso dificultará a manutenção, no caso de criarmos novas classificações.
+
+O que queremos, de fato, é manipular o "de, para". Para isso, utilizaremos um mapa, contendo as correspondências entre os valores.
+
+O tipo de dado utilizado no C# para mapas é o Dictionary.
+
+Criaremos uma variável mapa, que seja um Dictionary, que mapeará uma string para o tipo ClassificacaoIndicativa.
+
+namespace Alura.Filmes.App.Extensions
+{
+'public static class ClassificacaoIndicativaExtensions
+{
+    public static string ParaString(this ClassificacaoIndicativa valor)
+        {
+            var mapa = new Dictionary<string, ClassificacaoIndicativa>
+
+            return "G";
+        }
+    }
+}COPIAR CÓDIGO
+Em seguida, criaremos o mapa em si:
+
+namespace Alura.Filmes.App.Extensions
+{
+'public static class ClassificacaoIndicativaExtensions
+{
+    public static string ParaString(this ClassificacaoIndicativa valor)
+        {
+            var mapa = new Dictionary<string, ClassificacaoIndicativa>
+            {
+                { "G", ClassificacaoIndicativa.Livre },
+                { "PG", ClassificacaoIndicativa.MaiorQue10 },
+                { "PG-13", ClassificacaoIndicativa.MaiorQue13 },
+                { "R", ClassificacaoIndicativa.MaiorQue14 },
+                { "NC-17", ClassificacaoIndicativa.MaiorQue18 }
+            }
+            return "G";
+        }
+    }
+}COPIAR CÓDIGO
+Isto constitui nosso mapa, que faz a correspondência de uma string para um valor enumerado.
+
+Feito isso, precisaremos declarar a utilização deste mapa.
+
+Queremos selecionar a primeira ocorrência do mapa, que atenda a condição determinada. Inseriremos a seguinte expressão lambda (c => c.Value ==valor), que especificará qual é.
+
+namespace Alura.Filmes.App.Extensions
+{
+'public static class ClassificacaoIndicativaExtensions
+{
+    public static string ParaString(this ClassificacaoIndicativa valor)
+        {
+            var mapa = new Dictionary<string, ClassificacaoIndicativa>
+            {
+                { "G", ClassificacaoIndicativa.Livre },
+                { "PG", ClassificacaoIndicativa.MaiorQue10 },
+                { "PG-13", ClassificacaoIndicativa.MaiorQue13 },
+                { "R", ClassificacaoIndicativa.MaiorQue14 },
+                { "NC-17", ClassificacaoIndicativa.MaiorQue18 }
+            };
+            return mapa.First(c => c.Value == valor);
+
+            return "G";
+        }
+    }
+}COPIAR CÓDIGO
+O mapa sempre tem, no C#, duas propriedades que podemos utilizar para isolar a primeira e a segunda parte do mapa.
+
+A primeira parte é identificada por uma propriedade chamada key, enquanto a segunda, por uma chamada value.
+
+No caso, a condição que queremos atendida é que a segunda parte seja igual ao argumento que está sendo passado no método.
+
+Isolaremos a primeira ocorrência do mapa, que atenda esta condição, entretanto, não queremos a ocorrência inteira, e sim somente a propriedade chave, portanto:
+
+return.mapa.First(c => c.Value == valor).Key;COPIAR CÓDIGO
+Retornaremos ao Alura.Filmes.App.
+
+Apagaremos o comentário //string.textoLivre = "G", e alteraremos a var livre para var m10.
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+                var m10 = ClassificacaoIndicativa.MaioresQue10;
+                Console.WriteLine(m10.ParaString());COPIAR CÓDIGO
+Em seguida, executaremos o programa. Como podemos observar, o retorno foi "PG", ou seja, maiores que 10.
+
+Podemos inserir, por exemplo, MaioresQue18:
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+                var m10 = ClassificacaoIndicativa.MaioresQue18;
+                Console.WriteLine(m10.ParaString());COPIAR CÓDIGO
+Executando o programa, vemos que foi impresso "NC-17".
+
+O que temos é a função que converte, de um enumerado, para a string que queremos.
+
+Agora faremos o inverso. Teremos de fazer a conversão a partir de uma string do banco de dados, para um enumerado, no caso, do tipo ClassificacaoIndicativa.
+
+Para isso, criaremos um novo método de extensão, que retornará um valor de classificação indicativa, que chamaremos de ParaValor, além disso, estenderemos o tipo string com this string texto, onde o valor é representado pela palavra "texto":
+
+        public static ClassificacaoIndicativa ParaValor(this string texto)COPIAR CÓDIGO
+O que, no código, ficará da seguinte forma:
+
+namespace Alura.Filmes.App.Extensions
+{
+'public static class ClassificacaoIndicativaExtensions
+{
+    public static string ParaString(this ClassificacaoIndicativa valor)
+        {
+            var mapa = new Dictionary<string, ClassificacaoIndicativa>
+            {
+                { "G", ClassificacaoIndicativa.Livre },
+                { "PG", ClassificacaoIndicativa.MaiorQue10 },
+                { "PG-13", ClassificacaoIndicativa.MaiorQue13 },
+                { "R", ClassificacaoIndicativa.MaiorQue14 },
+                { "NC-17", ClassificacaoIndicativa.MaiorQue18 }
+            };
+
+            public static string ParaString(this ClassificacaoIndicativa valor)
+            {
+            return mapa.First(c => c.Value == valor).Key;
+            }
+
+        public static ClassificacaoIndicativa ParaValor(this string texto)
+        {
+
+        }COPIAR CÓDIGO
+Precisaremos incluir os valores de classificação indicativa com cautela, pois utilizar a função "copiar e colar" não é a melhor prática.
+
+Em seguida, faremos o retorno, com a primeira ocorrência que satisfaça a condição de que a primeira parte do mapa, ou seja, a propriedade key seja igual ao valor que está sendo passado como argumento do método ParaTexto, portanto, texto. Só que não queremos a instância do mapa inteiro, mas apenas a propriedade Value, a segunda propriedade do mapa.
+
+Vejamos a seguir:
+
+            public static string ParaString(this ClassificacaoIndicativa valor)
+            {
+            return mapa.First(c => c.Value == valor).Key;
+            }
+
+        public static ClassificacaoIndicativa ParaValor(this string texto)
+        {
+                { "G", ClassificacaoIndicativa.Livre },
+                { "PG", ClassificacaoIndicativa.MaiorQue10 },
+                { "PG-13", ClassificacaoIndicativa.MaiorQue13 },
+                { "R", ClassificacaoIndicativa.MaiorQue14 },
+                { "NC-17", ClassificacaoIndicativa.MaiorQue18 }
+        };
+        return mapa.First(c => c.Key == texto).Value;COPIAR CÓDIGO
+Retornando ao Aula.Filmes.App, veremos se a conversão da string G para o valor enumerado, funcionou:
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+                var m10 = ClassificacaoIndicativa.MaioresQue18;
+                Console.WriteLine(m10.ParaString());
+
+                Console.Writeline("G".ParaValor());COPIAR CÓDIGO
+Executaremos o programa, com o atalho "Ctrl + F5".
+
+Fica como desafio, você descobrir o método para que não seja permitida a conversão de qualquer string para um enumerado, caso contrário, ocorrerá um erro.
+
+Retornaremos à extensão Alura.Filmes.App.Extensions, onde removeremos o primeiro mapeamento feito, para que prevaleça somente aquele em que implementamos a conversão.
+
+Uma maneira de fazermos isso é colocando o mapa logo abaixo da classe ClassificacaoIndicativaExtensions, e remover o var, inserindo em seu lugar private static.
+
+Desta forma, será criado um campo estático, onde o mapa será inserido.
+
+Com isso, será possível removermos o trecho de código começando logo após ClassificacaoIndicativa, parando antes de return mapa.
+
+O código ficará da seguinte forma:
+
+namespace Alura.Filmes.App.Extensions
+{
+public static class ClassificacaoIndicativaExtensions
+{
+    private static Dictionary<string, ClassificacaoIndicativa> mapa = new Dictionary<string, ClassificacaoIndicativa>
+    {
+        { "G", ClassificacaoIndicativa.Livre },
+        { "PG", ClassificacaoIndicativa.MaiorQue10 },
+        { "PG-13", ClassificacaoIndicativa.MaiorQue13 },
+        { "R", ClassificacaoIndicativa.MaiorQue14 },
+        { "NC-17", ClassificacaoIndicativa.MaiorQue18 }
+    };
+
+    public static string ParaString(this ClassificacaoIndicativa valor)
+        {
+                return mapa.First(c => c.Value == valor).Key;
+        }
+
+        public static ClassificacaoIndicativa ParaValor(this string texto)
+            {
+            return mapa.First(c => c.Value == valor).Key;
+            }
+        }
+    }COPIAR CÓDIGO
+Retornaremos ao Alura.Filmes.App, e executaremos a aplicação.
+
+Com o retorno:
+
+NC-17
+Livre
+Pressione qualquer tecla para continuar...COPIAR CÓDIGO
+Vemos que está funcionando.
+
+A primeira parte do nosso problema, que era converter de um enumerado para uma string específica, foi resolvido com o método de extensão. Isso não significa que esta é a única forma, você pode explorar e descobrir novas.
+
+Para a segunda parte, veremos adiante como utilizar o Entity para mapear um tipo string, que corresponderá à coluna rating na tabela de filmes, e esconder a propriedade que contém o enumerado.
+
+
+
+
+
+
+
+
+05 - Ignorando uma propriedade no Entity
+Transcrição
+Na segunda parte da solução, trabalharemos com a classe Filme. Criaremos uma propriedade para que ela seja mapeada na coluna rating, da tabela de filmes.
+
+Abriremos a classe Filme.cs.
+
+namespace.Alura.Filmes.App.Negocio
+{
+    public class Filme
+    {
+        public int Id { get; set; }
+        public string Titulo { get; set; }
+        public string Descricao { get; set; }
+        public string AnoLancamento { get; set; }
+        public short Duracao { get; set; }
+        public ClassificacaoIndicativa Classificacao { get; set; }
+        public IList<FilmeAtor> Atores { get; set }
+        public Idioma IdiomaFalado { get; set; }
+        public Idioma IdiomaOriginal { get; set; }
+
+        public Filme()
+        {
+            Atores = new List<FilmeAtor>();
+        }
+
+        public override string ToString()
+        {
+            return $"Filme ({Id}): {Titulo} - {AnoLancamento}";
+        }
+    }
+}COPIAR CÓDIGO
+Criaremos a propriedade do tipo string, public string, e a chamaremos de TextoClassificacao.
+
+Além disso, queremos impedir que um desenvolvedor, ao criar uma instância de string, defina valores para esta propriedade. Por isso, seu método set será privado.
+
+O código ficou da seguinte forma:
+
+namespace.Alura.Filmes.App.Negocio
+{
+    public class Filme
+    {
+        public int Id { get; set; }
+        public string Titulo { get; set; }
+        public string Descricao { get; set; }
+        public string AnoLancamento { get; set; }
+        public short Duracao { get; set; }
+        public string TextoClassificacao { get; private set; }
+        public ClassificacaoIndicativa Classificacao { get; set; }
+        public IList<FilmeAtor> Atores { get; set }
+        public Idioma IdiomaFalado { get; set; }
+        public Idioma IdiomaOriginal { get; set; }
+
+        public Filme()
+        {
+            Atores = new List<FilmeAtor>();
+        }
+
+        public override string ToString()
+        {
+            return $"Filme ({Id}): {Titulo} - {AnoLancamento}";
+        }
+    }
+}COPIAR CÓDIGO
+Em seguida, abriremos os métodos de sete get, da propriedade ClassificacaoIndicativa, para que possamos ler os valores de Classificacao.
+
+O get será o valor inserido em TextoClassificacao, convertido para um valor do tipo enumerado ClassificacaoIndicativa. O método set converterá para string a propriedade TextoClassificacao, e o valor definido.
+
+public string TextoClassificacao { get; private set; }
+
+public ClassificacaoIndicativa Classificacao
+{
+    get { return TextoClassificacao.ParaValor();}
+    set { TextoClassificacao = value.ParaString(); }
+}
+
+public IList<FilmeAtor>Atores {get; set }COPIAR CÓDIGO
+Portanto temos duas propriedades que resolvem um único problema.
+
+A ClassificacaoIndicativa será utilizada na orientação a objetos, para limitar os valores que podem ser definidos para si.
+
+Enquanto a propriedade TextoClassificacao será utilizada para mapear este valor definido, e um valor específico, no banco de dados relacional.
+
+O próximo passo será retornarmos ao Entity para inserirmos esta configuração. Por um lado, queremos que a propriedade TextoClassificacao seja mapeada, e por outro, que a ClassificacaoIndicativa não seja mapeada.
+
+Anteriormente, trabalhamos com uma situação em que uma coluna do banco de dados não era mapeada no mundo Orientado a Objetos. As chamadas shadow properties.
+
+Temos aqui a situação contrária, temos uma propriedade na classe que não queremos que seja mapeada para o mundo relacional.
+
+Abriremos a configuração FilmConfiguration.cs.
+
+namespace Alura.Filmes.App.Dados
+{
+    public class FilmeConfiguration : IEntityTypeConfiguration<Filme>
+    {
+        public void Configure(EntityTypeBuilder<Filme> builder)
+        {
+            builder
+                .ToTable("film");
+
+            builder
+                .Property(f => f.Id)
+                .HasColumnName("film_id");
+
+            builder
+                .Property(f => f.Titulo)
+                .HasColumnName("title")
+                .HasColumnType("varchar(255)")
+                .IsRequired();
+
+            builder
+                .Property(f => f.Descricao)
+                .HasColumnName("description")
+                .HasColumnType("text");
+
+            builder
+                .Property(f => f.AnoLancamento)
+                .HasColumnName("release_year")
+                .HasColumnType("varchar(4)");
+
+            builder
+                .Property<DateTime>("last_update")
+                .HasColumntype("datetime")
+                .IsRequired();
+
+            builder.Property<byte>("language_id");
+            builder.Property<byte?>("original_language_id");
+
+            builder
+                .HasOne(f => f.IdiomaFalado)
+                .WithMany(i => i.FilmesFalados)
+                .HasForeignKey("language_id");
+
+            builder
+                .HasOne(f => f.IdiomaOriginal)
+                .WithMany(i => i.FilmesOriginais)
+                .HasForeignKey("original_language_id");
+
+            builder
+                .Property(f => f.Classificacao)
+                .HasColumnName("rating")
+                .HasColumnType("varchar(10)");
+        }
+    }
+}COPIAR CÓDIGO
+Na propriedade que está mapeando a coluna rating, alteraremos para TextoClassificacao:
+
+            builder
+                .Property(f => f.TextoClassificacao)
+                .HasColumnName("rating")
+                .HasColumnType("varchar(10)");COPIAR CÓDIGO
+A seguir, declararemos que a propriedade que está sendo definida por Classificacao, será ignorada pelo Entity, utilizando o método Ignore:
+
+            builder
+                .Property(f => f.TextoClassificacao)
+                .HasColumnName("rating")
+                .HasColumnType("varchar(10)");
+
+            builder
+                .Ignore(f => f.Classificacao);COPIAR CÓDIGO
+Isto finaliza a configuração. A TextoClassificacao será mapeada para o banco, e a Classificação só é utilizada para o mundo Orientado a Objetos.
+
+Faremos uma migração, para podermos fazer as modificações no banco.
+
+Em "Ferramentas > Gerenciador de Pacotes do NuGet > Console do Gerenciador de Pacotes" abriremos o console.
+
+Criaremos uma migração denominada Enumerado:
+
+PM> Add-Migration EnumeradoCOPIAR CÓDIGO
+E vemos que foi criada a seguinte migração:
+
+namespace Alura.Filmes.App.Migrations
+{
+    public partial class Enumerado : Migration
+    {
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+
+        }
+
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+
+        }COPIAR CÓDIGO
+Observamos que a migração está vazia, apesar da modificação que acabamos de fazer na configuração. Adiante, veremos o porquê disso.

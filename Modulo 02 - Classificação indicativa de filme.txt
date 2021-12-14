@@ -1,0 +1,593 @@
+01 - A coluna de Classificação Indicativa
+Transcrição
+Dando início à nossa aula sobre a coluna de classificação indicativa, abriremos o banco legado, intitulado AluraFilmes.
+
+Nela, abriremos a tabela dbo.film.
+
+Para abri-lo, selecionaremos "Pesquisador de Objetos do SQL Server > SQL Server > (localdb)\MSSQLLocalDB (SQL Server 13.0.4001 - DESKTOP-N51LB16\Caelum) > Banco de Dados > AluraFilmes > Tabelas > dbo.film > Restrições".
+
+caminho para chegarmos ate a restrição check rating
+
+Observaremos uma restrição chamada check_rating. Clicaremos duas vezes sobre ela.
+
+Será aberto um SQL de criação desta constraint.
+
+ALTER TABLE [dbo].[film]
+    ADD CONSTRAINT [check_rating] CHECK ([rating]='NC-17' OR [rating]='R' OR [rating]='PG-13' OR [rating]='PG' OR [rating]='G');COPIAR CÓDIGO
+Trata-se de uma constraint do tipo check, que verifica que a coluna rating possui os valores das faixas restritivas por idade ("R", "PG 13", "PG", ou "G"), conforme consta no SQL de criação.
+
+Existe uma regra de negócio que verifica se o valor da coluna rating está dentro daquele determinado conjunto.
+
+Veremos como o Entity pode nos auxiliar a mapear a restrição de check.
+
+Primeiramente, criaremos a coluna classificacao, que está representada na coluna rating.
+
+Na classe Filme, criaremos uma propriedade do tipo string chamada Classificacao.
+
+namespace Alura.Filmes.App.Negocio
+{
+    public class Filme
+    {
+        public int Id { get; set; }
+        public stringTitulo { get; set; }
+        public string Descricao { get; set; }
+        public string AnoLancamento { get; set; }
+        public short Duracao { get; set; }
+        public string Classificacao { get; set; }
+        public IList<FilmeAtor> Atores { get; set; }
+        public Idioma IdiomaFalado { get; set; }
+        public Idioma IdiomaOriginal { get; set; }
+
+        public Filme()
+        {
+            Atores = new List<FilmeAtor>();
+        }
+
+        public override string ToString()
+        {
+            return $"Filme ({Id}): {Titulo} - {AnoLancamento}";
+        }
+    }
+}COPIAR CÓDIGO
+Na tabela dbo.Film temos uma coluna chamada rating (varchar(10), nulo) que permite valores nulos, ela pode ser encontrada em "Pesquisador de Objetos do SQL Server > SQL Server > (localdb)\MSSQLLocalDB (SQL Server 13.0.4001 - DESKTOP-N51LB16\Caelum) > Banco de Dados > AluraFilmes > Tabelas > dbo.film > Colunas >rating (varchar(10), nulo)".
+
+Mapearemos a coluna Classificacao em FilmConfiguration.cs, abaixo do builder de IdiomaOriginal:
+
+namespace Alura.Filmes.App.Dados
+{
+    public class FilmeConfiguration : IEntityTypeConfiguration<Filme>
+    {
+        public void Configure(EntityTypeBuilder<Filme> builder)
+        {
+            builder
+                .ToTable("film")
+
+            builder
+                .Property(f => f.Id)
+                .HasColumnName("film_id");
+
+            builder
+                .Property(f => f.Titulo)
+                .HasColumnName("title")
+                .HasColumnType("varchar(255)")
+                .IsRequired();
+
+            builder
+                .Property(f => f.Descricao)
+                .HasColumnName("description")
+                .HasColumnType("text");
+
+            builder
+                .Property(f => f.AnoLancamento)
+                .HasColumnType("release_year")
+                .HasDefaultValueSql("varchar(4)");
+
+            builder
+                .Property(f => f.Duracao)
+                .HasColumnName("length");
+
+            builder
+                .Property<DateTime>("last_update")
+                .HasColumnType("datetime");
+                .IsRequired();
+
+            builder.Property<byte>("language_id");
+            builder.Property<byte>("original_language_id");
+
+            builder
+                .HasOne(f => f.IdiomaFalado)
+                .WithMany(i => i.FilmesFalados)
+                .HasForeignKey("language_id");
+
+            builder
+                .HasOne(f => f.IdiomaOriginal)
+                .WithMany(i => i.FilmesOriginais)
+                .HasForeignKey("original_language_id");
+
+            builder
+                .Property(f => f.Classificacao)
+                .HasColumnName("rating")
+                .HasColumnType("varchar(10)");
+        }
+    }
+}COPIAR CÓDIGO
+Abriremos o console em "Ferramentas > Gerenciador de Pacotes do NuGet > Console do Gerenciador de Pacotes", e, em seguida, criaremos a migração Classificacao:
+
+PM> ADD-Migration ClassificacaoCOPIAR CÓDIGO
+O que gerará a referida coluna:
+
+public partial class Classificacao : Migration
+{
+    protected override void Up(MigrationBuilder migrationBuilder)
+    {
+
+    migarionBuilder.AddColumn<string>(
+    name: "rating",
+    table: "film",
+    type: "varchar(10)",
+    nullable: (true);
+    }COPIAR CÓDIGO
+Confirmaremos que estamos apontando para o banco correto, ou seja, o que está evoluindo.
+
+No AluraFilmesTST, que acessamos em "Pesquisador de Objetos do SQL Server > SQL Server > (localdb)\MSSQLLocalDB (SQL Server 13.0.4001 - DESKTOP-N51LB16\Caelum) > Banco de Dados > AluraFilmesTST > Tabelas > Colunas", veremos que, antes de atualizarmos, ele não conta com a coluna rating.
+
+colunas do banco alurafilmestst que ainda nao conta com rating
+
+Faremos um Update-Database, no console do gerenciador de pacotes, em cima deste banco.
+
+PM> ADd-Migration Classificacao
+To undo this action, use Remove-Migration.
+PM> Update-Database
+Applying migration '20171003222638_Classificacao'.
+Done.COPIAR CÓDIGO
+Isso conclui a aplicação da migração à classificação.
+
+Agora é possível observarmos, após a atualização, que a coluna rating foi criada.
+
+visualização da lista de colunas incluindo a rating
+
+Com isso, será possível criarmos um programa para exibir um filme com sua classificação.
+
+O objetivo é que não seja possível utilizar, ao final da aula, o código que havíamos construído para exibição de dois atores homônimos.
+
+Isso porque a regra de negócio de check passará a atuar, e impedir que o referido código funcione.
+
+Criaremos um filme, com a declaração var filme = new Filme(), que contará com título, duração, ano de lançamento e classificação.
+
+No nosso exemplo, usaremos o filme "Senhor dos Anéis", que terá uma duração de 120 minutos, o ano de 2000 como lançamento e, na classificação, por ser uma string, incluiremos Qualquer coisa.
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+
+                var filme = new Filme();
+                filme.Titulo = "Senhor dos Aneis";
+                filme.Duracao = 120;
+                filme.AnoLancamento = "2000";
+                filme.Classificacao = "Qualquer coisa";COPIAR CÓDIGO
+Em FilmConfiguration.cs veremos que a shadow property last update deverá conter um valor padrão para esta coluna. Não faremos nenhuma alteração pois, como veremos, será possível fazer essa adição sem problemas, com o comando contexto.Entry, no mesmo código:
+
+var filme = new Filme();
+filme.Titulo = "Senhor dos Aneis";
+filme.Duracao = 120;
+filme.AnoLancamento = "2000";
+filme.Classificacao = "Qualquer coisa";
+contexto.Entry(filme).Property("last update").CurrentValue = DateTime.NowCOPIAR CÓDIGO
+Posteriormente, teremos a opção de fazer uma melhoria, e incluir um valor padrão para esta shadow property, last_update'.
+
+Em seguida, ainda no mesmo código, adicionaremos a instância filme e, utilizaremos SaveChanges para realizarmos o insert neste filme.
+
+var filme = new Filme();
+filme.Titulo = "Senhor dos Aneis";
+filme.Duracao = 120;
+filme.AnoLancamento = "2000";
+filme.Classificacao = "Qualquer coisa";
+contexto.Entry(filme).Property("last update").CurrentValue = DateTime.Now
+
+contexto.Filmes.Add(filme);
+contexto.SaveChanges();COPIAR CÓDIGO
+O resultado desejado é que tenhamos um filme, chamado "Senhor dos Anéis", no nosso banco de dados.
+
+Executaremos a aplicação, utilizando o atalho "Ctrl + F5".
+
+Surgirá uma mensagem de erro, indicando que há dados truncados.
+
+No texto original: "An error occurred while updating the entries".
+
+Isto aconteceu porque o valor inserido na classificação contém mais de 10 caracteres. Por isso, alteraremos para filme.Classificacao = "Qualquer".
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+
+var filme = new Filme();
+filme.Titulo = "Senhor dos Aneis";
+filme.Duracao = 120;
+filme.AnoLancamento = "2000";
+filme.Classificacao = "Qualquer";
+contexto.Entry(filme).Property("last update").CurrentValue = DateTime.Now
+
+contexto.Filmes.Add(filme);
+contexto.SaveChanges();COPIAR CÓDIGO
+Executaremos novamente, e, ocorreu um novo erro. Temos um conflito de idiomas.
+
+No texto original: "The INSERT statement conflicted with the FOREIGN KEY constraint "FK_film_language_language_id". The conflict occurred in database "AluraFilmesTST", table "dbo.language", column 'language_id'.".
+
+Isso aconteceu porque o idioma falado original, do filme, é obrigatório. Será necessário inseri-lo.
+
+Faremos a associação com o comando filme.IdiomaFalado = contexto.Idiomas.First(), indicando que o valor pode ser preenchido pela primeira opção que surgir.
+
+var filme = new Filme();
+filme.Titulo = "Senhor dos Aneis";
+filme.Duracao = 120;
+filme.AnoLancamento = "2000";
+filme.Classificacao = "Qualquer";
+filme.IdiomaFalado = contexto.Idiomas.First();
+contexto.Entry(filme).Property("last update").CurrentValue = DateTime.Now;COPIAR CÓDIGO
+Executando novamente a aplicação, vemos que há, outra vez, um erro.
+
+Desta vez, "a sequência não contém elementos". Isto ocorreu porque não há nenhum idioma cadastrado no banco de dados.
+
+Criaremos um banco de idiomas var idioma = new Idioma { Nome = "English" };:
+
+contexto.LogSQLToConsole();
+
+var idioma = new Idioma { Nome = "English"}
+
+var filme = new Filme();
+filme.Titulo = "Senhor dos Aneis";
+filme.Duracao = 120;
+filme.AnoLancamento = "2000";
+filme.Classificacao = "Qualquer";
+filme.IdiomaFalado = idioma;
+contexto.Entry(filme).Property("last update").CurrentValue = DateTime.Now;COPIAR CÓDIGO
+Executaremos novamente a aplicação, utilizando o atalho "Ctrl + F5".
+
+Vemos agora que a aplicação funcionou, conseguimos incluir o filme.
+
+Entretanto, a real intenção é impormos a regra de negócio de valores fixos na coluna classificacao. Uma vez que, como vimos, foi possível incluir uma classificação com uma string Qualquer.
+
+Queremos incluir uma restrição de check rating, com os valores de classificação indicativa pré-definidos. Veremos em seguida como podemos fazer isto.
+
+
+
+
+
+
+
+
+02 - Instrutor esquecido!
+PRÓXIMA ATIVIDADE
+
+No vídeo anterior, o instrutor mencionou que esqueceu de definir um valor padrão para a coluna last_update na tabela de filmes. E você, será que se lembra do que devemos fazer para configurar esse valor padrão? Assinale o código que configura corretamente o valor padrão da coluna citada.
+
+Selecione uma alternativa
+
+builder.Property<DateTime>("last_update")
+    .HasColumnType("datetime")
+        .HasDefaultValueSql("getdate()");
+
+
+
+
+
+
+
+03 - Criando a constraint de check
+
+Transcrição
+Nesta aula, continuaremos com a implementação da restrição do tipo check.
+
+O Entity não suporta, nativamente, restrições deste tipo. Em contrapartida, ele suporta o envio de comandos SQL durante a migração.
+
+Seguindo este método, criaremos nossa restrição do tipo check.
+
+Acessaremos o banco legado, em "Pesquisador de Objetos do SQL Server > SQL Server > (localdb)\MSSQLLocalDB (SQL Server 13.0.4001 - DESKTOP-N51LB16\Caelum) > Banco de Dados > AluraFilmes > Tabelas > dbo.film > Restrições > check_rating", e selecionaremos o comando que cria tal restrição, ou seja check_rating:
+
+ALTER TABLE [dbo].[film]
+ADD CONSTRAINT [check_rating] CHECK ([rating]='NC-17' OR [rating]='R' OR [rating]='PG-13' OR [rating]='PG' OR [rating]='G');COPIAR CÓDIGO
+Copiaremos este texto.
+
+A seguir, criaremos uma migração vazia em que possamos inserir o comando SQL.
+
+Selecionaremos, na barra de menu superior, "Ferramentas > Gerenciador de Pacotes do NuGet > Console do Gerenciador de Pacotes".
+
+No console, declararemos: PM> Add-Migration FilmeCheckConstraint.
+
+PM> Add-Migration Classificacao
+To undo this action, use Remove-Migration.
+PM> Update-Database
+Applying migration '20171003222638_Classificacao".
+Done.
+PM> Add-Migration FilmeCheckConstraintCOPIAR CÓDIGO
+O que dará origem a uma migração vazia, uma vez que não há nenhuma modificação nas classes de negócio.
+
+namespace Alura.Filmes.App.Migrations
+{
+    public partial class FilmeCheckConstraint : Migration
+    {
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+
+        }
+
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+
+        }COPIAR CÓDIGO
+Na migração vazia protected override void Up(MigrationBuilder migrationBuilder), criaremos uma variável do tipo string, para armazenar o SQL que copiamos do banco legado.
+
+Trata-se de um ddl de Alter Table para criar a constraint.
+
+protected override void Up(MigrationBuilder migrationBuilder)
+{
+    var sql = @"ALTER TABLE [dbo].[film]
+ADD CONSTRAINT [check_rating] CHECK (
+[rating]='NC-17' OR 
+[rating]='R' OR 
+[rating]='PG-13' OR 
+[rating]='PG' OR 
+[rating]='G');"
+}COPIAR CÓDIGO
+Em seguida, declararemos um migrationBuilder.Sql(sql) com o valor da variável SQL.
+
+protected override void Up(MigrationBuilder migrationBuilder)
+{
+    var sql = @"ALTER TABLE [dbo].[film]
+ADD CONSTRAINT [check_rating] CHECK (
+[rating]='NC-17' OR 
+[rating]='R' OR 
+[rating]='PG-13' OR 
+[rating]='PG' OR 
+[rating]='G');"
+
+migrationBuilder.Sql(sql);
+}COPIAR CÓDIGO
+Quando a migração for chamada para ser atualizada, o SQL será executado e criará esta constraint.
+
+Importante lembrar que, assim como inserimos o SQL de criação da constraint no método Up, teremos de fazer, também, o inverso em Down.
+
+No método Down, será necessário dropar a constraint, dentro de migrationBuilder.Sql().
+
+protected override void Up(MigrationBuilder migrationBuilder)
+{
+    var sql = @"ALTER TABLE [dbo].[film]
+ADD CONSTRAINT [check_rating] CHECK (
+[rating]='NC-17' OR 
+[rating]='R' OR 
+[rating]='PG-13' OR 
+[rating]='PG' OR 
+[rating]='G');"
+
+migrationBuilder.Sql(sql);
+}
+
+protected override void Down(MigrationBuilder migrationBuilder)
+{
+    migrationBuilder.Sql("ALTER TABLE [dbo].[film]
+DROP CONSTRAINT [check_rating]");
+}COPIAR CÓDIGO
+Com isso, faremos um update da migração e tentaremos executar o programa novamente.
+
+Para isso, declararemos no console PM> Update-Database.
+
+PM> ADd-Migration Classificcacao
+To undo this action, use Remove-Migration.
+PM> Update-Database
+Applying migration '20171003222638_Classificacao".
+Done.
+PM> Add-Migration FilmeCheckConstraint
+To undo this action, use Remove-Migration.
+PM> Update-DatabaseCOPIAR CÓDIGO
+A constraint será aplicada.
+
+Executando a aplicação, será exibida uma mensagem de erro:
+
+ClientConnectionId:e4d7e690-cf6e-441f-aa13-e14be4d2e7a5
+Error Number:547, State:0, Class:16
+The ALTER TABLE statement conflicted with the CHECK constraint "check_rating". The conflict occurred in database "AluraFilmesTST", table "dbo.film", column 'rating'.COPIAR CÓDIGO
+O que aconteceu foi, que ao criarmos a constraint, ela já começou a funcionar. Isso é evidenciado pela existência, na tabela dbo.film no banco de evolução, de um filme cuja classificação não atende à regra check_rating:
+
+tabela onde consta filme que nao corresponde a regra check rating
+
+Excluiremos o referido item, "Senhor dos Anéis". Clicaremos com o botão direito sobre a linha, e selecionaremos "Excluir" e "Sim", para confirmar.
+
+No console, faremos uma atualização:
+
+ClientConnectionId:e4d7e690-cf6e-441f-aa13-e14be4d2e7a5
+Error Number:547, State:0, Class:16
+The ALTER TABLE statement conflicted with the CHECK constraint "check_rating". The conflict occurred in database "AluraFilmesTST", table "dbo.film", column 'rating'.
+PM> Update-DatabaseCOPIAR CÓDIGO
+Como retorno, teremos:
+
+PM> Update-Database
+Applying migration: '20171003225439_filmeCheckConstraint'.
+Done.
+PM>COPIAR CÓDIGO
+Atualizaremos a tabela dbo.film, clicando sobre ela com o botão direito do mouse e selecionando "Atualizar".
+
+atualizando a tabela dbo
+
+Veremos que a restrição check_rating já aparece:
+
+restrição check rating na tabela dbo
+
+O objetivo é que, ao rodarmos o programa:
+
+class Program
+{
+    static void Mais (string[] args)
+    {
+        using (var contexto = new AluraFilmesContexto())
+        {
+            contexto.LogSQLToConsole();
+
+            var idioma = new Idioma { Nomes = "English" };
+
+            var filme = new Filme();
+            filme.Titulo = "Senhor dos Aneis";
+            filme.Duracao = 120;
+            filme.AnoLancamento = "2000";
+            filme.Classificacao = "Qualquer";
+            filme.IdiomaFalado = idioma;
+            contexto.Entry(filme).Property("last_update").CurrentValue = DateTime.Now;
+
+            contexto.Filmes.Add(filme);
+            contexto.SaveChanges();COPIAR CÓDIGO
+Aconteça um erro, indicando que a constraint está cumprindo sua função.
+
+Com o atalho "Ctrl + F5", executaremos o programa.
+
+Veremos que foi exibida uma mensagem de erro:
+
+Exceção Sem Tratamento: Microsoft.EntityFrameworkCore.DbUpdateException: An error occurred while updating th entries. See the inner exception for details. ---> System.Data.SqlClient.SqlException: Violation of PRIMARY KEY constraint 'PK_language'. Cannot insert duplicate key in object 'dbo.language'. The duplicate key value is (0).COPIAR CÓDIGO
+Ou seja, houve uma violação da chave primária.
+
+Isso ocorreu porque foi criado um idioma, sem que esta informação estivesse populada.
+
+Por isso, incluiremos uma referência para que seja utilizado o primeiro idioma que aparecer, no caso, o inglês: filme.IdiomaFalado = contexto.Idiomas.First();.
+
+class Program
+{
+    static void Mais (string[] args)
+    {
+        using (var contexto = new AluraFilmesContexto())
+        {
+            contexto.LogSQLToConsole();
+
+            var idioma = new Idioma { Nomes = "English" };
+
+            var filme = new Filme();
+            filme.Titulo = "Senhor dos Aneis";
+            filme.Duracao = 120;
+            filme.AnoLancamento = "2000";
+            filme.Classificacao = "Qualquer";
+            filme.IdiomaFalado = contexto.Idiomas.First();
+            contexto.Entry(filme).Property("last_update").CurrentValue = DateTime.Now;
+
+            contexto.Filmes.Add(filme);
+            contexto.SaveChanges();COPIAR CÓDIGO
+Executaremos o programa.
+
+Observamos que há um erro, onde o comando de insert entrou em conflito com a contraint check_rating:
+
+System.Data.SqlClient.SqlException: the INSERT statement conflicted with the CHECK contraint "check_rating".COPIAR CÓDIGO
+Que era o resultado desejado.
+
+Com isso, conseguimos criar a restrição de check com o recurso proporcionado pelo Entity, que é por meio de uma SQL sendo rodada durante a migração.
+
+Adiante, veremos se há algum recurso na linguagem c# que bloqueie, em tempo de compilação, a inserção de uma string qualquer em filme.Classificacao.
+
+ DISCUTIR NO FORUM
+PRÓXIMA ATIVI
+
+
+
+
+
+
+
+
+
+
+
+
+
+04 - Objeto já existe no banco de dados!
+PRÓXIMA ATIVIDADE
+
+Luciana está seguindo fervorosamente o curso (parabéns!) e criou a restrição de check no banco AluraFilmes usando a classe de migração abaixo.
+
+public partial class FilmeCheckConstraint : Migration
+{
+    protected override void Up(MigrationBuilder migrationBuilder)
+    {
+        var sql = @"ALTER TABLE [dbo].[film]
+            ADD CONSTRAINT [CHECK_rating] CHECK (
+                [rating]='NC-17' OR 
+                [rating]='R' OR     
+                [rating]='PG-13' OR 
+                [rating]='PG' OR 
+                [rating]='G')";
+
+        migrationBuilder.Sql(sql);    
+    }
+
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+    }
+}COPIAR CÓDIGO
+Mas ela precisou voltar o banco ao estado anterior. Quando executou novamente a migração FilmeCheckConstraint tomou um erro dizendo que a restrição check_rating já existia no banco de destino. O que ela esqueceu de fazer?
+
+Selecione uma alternativa
+
+Esqueceu de dropar a restrição no método Down().
+
+
+
+
+
+
+
+ 
+05 - ALTER TABLE statement conflicted with the CHECK constraint "check_rating"
+PRÓXIMA ATIVIDADE
+
+Marque a causa do erro ocorrido quando o instrutor executou o comando Update-Database para criar a restrição de check.
+
+Selecione uma alternativa
+
+A tabela de filmes já tinha um registro que feria a restrição de check.
+
+
+
+
+
+
+
+
+
+06 - O que aprendemos?
+PRÓXIMA ATIVIDADE
+
+Nessa aula você descobriu que o Entity não dá suporte nativo a restrições do tipo CHECK e aprendeu a criá-las usando o recurso de Migrations do EF Core, através do método Sql().
+
+
+
+
+
+
+
+
+07 - Consolidando os conhecimentos
+PRÓXIMA ATIVIDADE
+
+Chegou a hora de você seguir todos os passos realizados por mim durante esta aula. Caso já tenha feito, excelente. Se ainda não, é importante que você execute o que foi visto no vídeo para poder continuar com o próximo capítulo.
+
+No próximo capítulo vamos fazer o mapeamento de tipos enumerados. Te encontro lá!
+
+
+
+
+
+
+
+08 - Projeto da aula atual
+PRÓXIMA ATIVIDADE
+
+Baixe o código-fonte do projeto até o momento!
+https://caelum-online-public.s3.amazonaws.com/706-efcore2/02/Alura.Filmes.Aula8.zip
