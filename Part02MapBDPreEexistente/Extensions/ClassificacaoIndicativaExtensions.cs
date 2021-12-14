@@ -18,6 +18,7 @@ namespace Part02MapBDPreEexistente.Extensions
             {"NC-17", ClassificacaoIndicativa.MaioresQue18 }
         };
 
+
         public static string ParaString(this ClassificacaoIndicativa valor)
         {            
             return mapa.First(c => c.Value == valor).Key;
