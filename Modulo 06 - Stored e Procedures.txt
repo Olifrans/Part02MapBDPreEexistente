@@ -644,3 +644,36 @@ Como sugestão de próximos passos, para integrar os conhecimentos de Entity, pr
 Na Alura temos diversos cursos dedicados à este framewrok, você pode conferir!
 
 Obrigada pela companhia.
+
+
+
+
+
+
+07 - Consolidando os conhecimentos
+PRÓXIMA ATIVIDADE
+
+Chegou a hora de você seguir todos os passos realizados por mim durante esta aula. Caso já tenha feito, excelente. Se ainda não, é importante que você execute o que foi visto no vídeo para poder concluir o curso.
+
+
+
+
+
+
+08 - O que aprendemos?
+PRÓXIMA ATIVIDADE
+
+Nessa aula você aprendeu:
+
+O comando ExecuteSqlCommand
+a passar parâmetros para o ExecuteSqlCommand
+a ler valores de parâmetros recuperados do ExecuteSqlCommand
+a enviar comandos INSERT, DELETE e UPDATE
+
+
+
+
+09 Projeto final do curso
+PRÓXIMA ATIVIDADE
+
+Baixe o código-fonte do projeto até o momento!
