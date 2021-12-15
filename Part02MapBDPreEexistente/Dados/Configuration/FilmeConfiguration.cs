@@ -29,12 +29,10 @@ namespace Part02MapBDPreEexistente.Dados.Configuration
                .HasColumnType("text")
                .IsRequired();
 
-
            builder
               .Property(a => a.AnoLancamentoFilme)
               .HasColumnName("release_year")
               .HasColumnType("varchar(4)");
-
 
            builder
               .Property(a => a.DuracaaoFilme)
@@ -46,7 +44,6 @@ namespace Part02MapBDPreEexistente.Dados.Configuration
               .HasColumnType("datetime")
               .HasDefaultValueSql("getdate()") //Setando um valor padão  para Property Shadow Property
               .IsRequired();
-
 
 
             //Shadow property FK idoma falado
@@ -66,7 +63,6 @@ namespace Part02MapBDPreEexistente.Dados.Configuration
                 .HasOne(f => f.IdiomaOriginal)
                 .WithMany(i => i.FilmeOriginal)
                 .HasForeignKey("original_language_id");
-
 
             //Mapeamento de classificação
             builder

@@ -2,9 +2,11 @@
 using MapeandoBDPreEexistente.Dados;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
+using System.Data.SqlClient;
 using Part02MapBDPreEexistente.Dados;
 using Part02MapBDPreEexistente.Extensions;
 using Part02MapBDPreEexistente.Negocio;
+using System.Data;
 
 namespace Part02MapBDPreEexistente
 {
@@ -12,24 +14,146 @@ namespace Part02MapBDPreEexistente
     {
         static void Main(string[] args)
         {
-            //select *from filmeator
+            //select *from table
             using (var contexto = new AluraFilmesContext())
             {
+
+
+
+
+                //Enviando comandos INSERT, UPDATE e DELETE
                 contexto.LogSQLToConsole();
+                var sql = "INSERT INTO language (name) VALUES ('Teste 1'), ('Teste 2'), ('Teste 3')";
+                var registros = contexto.Database.ExecuteSqlRaw(sql);
+                Console.WriteLine($"O total de registros afetados é {registros}.");
 
-                var filme = new Filme();
-                filme.TituloFilme = "A copia do livro";
-                filme.DuracaaoFilme = 120;
-                filme.AnoLancamentoFilme = "2000";
-                filme.Clasificacao = ClassificacaoIndicativa.Livre;
-                filme.IdiomaFalado = contexto.Idiomas.First();
-                contexto.Entry(filme).Property("last_update").CurrentValue = DateTime.Now;
+                var deleteSql = "DELETE FROM language WHERE name LIKE 'Teste%'";
+                registros = contexto.Database.ExecuteSqlRaw(deleteSql);
+                Console.WriteLine($"O total de registros afetados é {registros}.");
 
-                contexto.Filmes.Add(filme);
-                contexto.SaveChanges();
 
-                var filmeInserido = contexto.Filmes.First(f => f.TituloFilme == "A copia do livro");
-                Console.WriteLine(filmeInserido.Clasificacao);
+
+
+
+                ////Usando Stored Procedures
+                //contexto.LogSQLToConsole();
+                //var categ = "Action"; //36
+
+                //var paramCateg = new SqlParameter("category_name", categ);
+                //var paramTotal = new SqlParameter
+                //{
+                //    ParameterName = "@total_actors",
+                //    Size = 4,
+                //    Direction = ParameterDirection.Output
+                //};
+                //contexto.Database
+                //    .ExecuteSqlCommand(
+                //    //.ExecuteSqlRaw(
+                //    "total_actors_from_given_category @category_name, @total_actors OUT",
+                //    paramCateg,
+                //    paramTotal);
+                //Console.WriteLine($"O total de atores na categoria {categ} é de {paramTotal.Value}.");
+
+
+
+
+                //////Elaboração de relatórios
+                //contexto.LogSQLToConsole();
+                ////Desativando a geração de relatório do entity para usar a própria com views
+                //var sql = @"select a.* from actor a
+                //     inner join top5_most_starred_actors filmes on filmes.actor_id = a.actor_id";
+                //var atoresMaisAtuantes = contexto.Atores
+                //    .FromSqlRaw(sql)
+                //    .Include(a => a.Filmografia);
+                //foreach (var ator in atoresMaisAtuantes)
+                //{
+                //    System.Console.WriteLine($"O ator --> {ator.PrimeiroNome} {ator.UltimoNome} --> atuou em {ator.Filmografia.Count} --> filmes");
+                //}
+
+
+
+
+                ///////Problema sql chapado no codigo
+                //////Elaboração de relatórios
+                //contexto.LogSQLToConsole();
+
+                ////Desativando a geração de relatório do entity para usar a própria consulta
+                //var sql = @"select a.*
+                //    from actor a
+                //     inner join
+                //    (select top 5 a.actor_id, count(*) as total
+                //    from actor a
+                //     inner join film_actor fa on fa.actor_id = a.actor_id
+                //    group by a.actor_id
+                //    order by total desc) filmes on filmes.actor_id = a.actor_id";
+                //var atoresMaisAtuantes = contexto.Atores
+                //    .FromSqlRaw(sql)
+                //    .Include(a => a.Filmografia);
+
+                //foreach (var ator in atoresMaisAtuantes)
+                //{
+                //    System.Console.WriteLine($"O ator --> {ator.PrimeiroNome} {ator.UltimoNome} --> atuou em {ator.Filmografia.Count} --> filmes");
+                //}
+
+
+
+
+
+
+
+
+
+                //////Elaboração de relatórios
+                //contexto.LogSQLToConsole();                
+                //var atoresMaisAtuantes = contexto.Atores
+                //    .Include(a => a.Filmografia) //Ordenação da lista de re relatórios
+                //    .OrderByDescending(a => a.Filmografia.Count)
+                //    .Take(5); //Top 05
+                //foreach (var ator in atoresMaisAtuantes)
+                //{
+                //    System.Console.WriteLine($"O ator --> {ator.PrimeiroNome} {ator.UltimoNome} --> atuou em {ator.Filmografia.Count} --> filmes");
+                //}
+
+
+
+                //contexto.LogSQLToConsole();
+                //Console.WriteLine("Idiomas:");
+                //foreach (var idioma in contexto.Idiomas)
+                //{
+                //    Console.WriteLine(idioma);
+                //}
+
+
+                //contexto.LogSQLToConsole();
+                //Console.WriteLine("Clientes:");
+                //foreach (var cliente in contexto.Clientes)
+                //{
+                //    Console.WriteLine(cliente);
+                //}
+
+
+                //contexto.LogSQLToConsole();
+                //Console.WriteLine("\nFuncionarios:");
+                //foreach (var funcionario in contexto.Funcionarios)
+                //{
+                //    Console.WriteLine(funcionario);
+                //}
+
+
+
+                //contexto.LogSQLToConsole();
+                //var filme = new Filme();
+                //filme.TituloFilme = "A copia do livro";
+                //filme.DuracaaoFilme = 120;
+                //filme.AnoLancamentoFilme = "2000";
+                //filme.Clasificacao = ClassificacaoIndicativa.Livre;
+                //filme.Clasificacao = ClassificacaoIndicativa.Livre;
+                //filme.IdiomaFalado = contexto.Idiomas.First();
+                //contexto.Entry(filme).Property("last_update").CurrentValue = DateTime.Now;
+                //contexto.Filmes.Add(filme);
+                //contexto.SaveChanges();
+                //var filmeInserido = contexto.Filmes.First(f => f.TituloFilme == "A copia do livro");
+                //Console.WriteLine(filmeInserido.Clasificacao);
 
 
 
@@ -228,3 +352,39 @@ namespace Part02MapBDPreEexistente
 //inner join film_actor fa on fa.actor_id = a.actor_id
 //inner join film f on f.film_id = fa.film_id
 //where fa.film_id = 1
+
+
+
+
+
+
+////Elaboração de relatórios com Top5
+
+//select top 5 a.first_name, a.last_name, count(*) as total
+//from actor a
+//	inner join film_actor fa on fa.actor_id = a.actor_id
+//group by a.first_name, a.last_name
+//order by total desc
+
+
+////Elaboração de relatórios com Completo
+
+//select a.first_name, a.last_name, count(*) as total
+//from actor a
+//	inner join film_actor fa on fa.actor_id = a.actor_id
+//group by a.first_name, a.last_name
+//order by total desc
+
+
+
+//clausula para atender a regra do entity quanto ao FromSql
+
+//select a.*
+//from actor a
+//    inner join
+//(select top 5 a.actor_id, count(*) as total
+//from actor a
+
+//    inner join film_actor fa on fa.actor_id = a.actor_id
+//group by a.actor_id
+//order by total desc) filmes on filmes.actor_id = a.actor_id

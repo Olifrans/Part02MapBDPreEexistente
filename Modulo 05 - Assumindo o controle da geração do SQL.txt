@@ -1,0 +1,983 @@
+01 - Assumindo as rédeas do SQL gerado
+Transcrição
+Olá!
+
+Nesta aula, veremos como podemos trabalhar relatórios de maior complexidade.
+
+No exemplo que iremos trabalhar, imaginamos que há um site no qual temos a visualização dos "Top 5 Atores + Atuantes", são eles:
+
+- Sandra Bullock (37)
+- Uma Thurman (35)
+- Val Kilmes (33)
+- Julia Stiles (33)
+- Robert Bedford (29)COPIAR CÓDIGO
+Ao lado do seu nome, temos o número total de filmes que aquele ator ou atriz, participou.
+
+Em seguida, há um "Top 5 Filmes + Longos":
+
+- E o Vento Levou (3h)
+- O Hobbit III (2,5h)
+- A Volta dos que... (2h)
+- Harry Potter (1,8h)
+- Kill Bill (1,8h)COPIAR CÓDIGO
+Onde temos o nome do filme e, ao lado, a duração de cada um em parênteses.
+
+Temos queries mais simples, como é o caso da duração de cada filme, e, mais complexas, como o número de filmes em que cada um já atuou.
+
+Esta segunda é mais complexa porque envolve mais de uma tabela.
+
+Este tipo de problema é bastante recorrente na prática, na vida profissional é comum encontrarmos este tipo de situação, envolvendo relatórios complexos, envolvendo selects em diversas tabelas simultaneamente. O módulo de relatório em uma aplicação é um ponto crítico no sistema, em relação a performance.
+
+O select em diversas tabelas exige cuidado e atenção, principalmente no que se relaciona a performance. Prestaremos mais atenção ao processo de geração do SQL.
+
+Começaremos com a primeira listagem, trabalhando-a via Entity.
+
+Faremos o caminho inverso. Na classe Program:
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();COPIAR CÓDIGO
+Simularemos um relatório, e imprimiremos os cinco atores mais atuantes em nossa base de dados.
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+                foreach (var ator in atoresMaisAtuantes)
+                {
+
+                }
+            }
+        }
+    }
+}COPIAR CÓDIGO
+Imprimiremos no console a seguinte mensagem:
+
+$"O ator {ator.PrimeiroNome + ator.UltimoNome} atuou em {ator.Filmografia.Count} filmes"COPIAR CÓDIGO
+O que, no código, ficará da seguinte forma:
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+                foreach (var ator in atoresMaisAtuantes)
+                {
+                    System.Console.WriteLine($"O ator {ator.PrimeiroNome + ator.UltimoNome} atuou em {ator.Filmografia.Count} filmes")
+                }
+            }
+        }
+    }
+}COPIAR CÓDIGO
+Feito isso, montaremos a lista atoresMaisAtuantes.
+
+O primeiro passo será criarmos a variável:
+
+var atoresMaisAtuantesCOPIAR CÓDIGO
+E acessar, no contexto, a propriedade DbSet Atores:
+
+var atoresMaisAtuantes = contexto.Atores;COPIAR CÓDIGO
+O que, no código, ficará da seguinte forma:
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+                var atoresMaisAtuantes = contexto.Atores;
+
+                foreach (var ator in atoresMaisAtuantes)
+                {
+                    System.Console.WriteLine($"O ator {ator.PrimeiroNome + ator.UltimoNome} atuou em {ator.Filmografia.Count} filmes")
+                }
+            }
+        }
+    }
+}COPIAR CÓDIGO
+Se pararmos por aqui, imprimiremos todos os atores da base de dados e o total de filmes em que cada um atuou.
+
+Executaremos o programa, e veremos no console a lista completa com todos os nomes.
+
+Há dois problemas com esta lista, não há espaço entre o primeiro e último nome, e, todos os atores estão com um total de zero filmes.
+
+Para saber o porquê disso, basta visualizarmos o select:
+
+Executing DbDocument [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [a].[actor_id], [a].[first_name], [a].[last_name], [a].[last_update]
+FROM [actor] AS [a]
+
+Executed DbDocument (4ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [a].[actor_id], [a].[first_name], [a].[last_name], [a].[last_update]
+FROM [actor] AS [a]COPIAR CÓDIGO
+Ele, por enquanto, está trazendo apenas a tabela actor_id. A coleção Filmografia não está preenchida, para isso, precisaremos incluir a relação entre ator e film actor.
+
+Retornaremos ao Program.cs.
+
+Primeiro, inseriremos um espaço após ator.PrimeiroNome, da seguinte forma:
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+                var atoresMaisAtuantes = contexto.Atores;
+
+                foreach (var ator in atoresMaisAtuantes)
+                {
+                    System.Console.WriteLine($"O ator {ator.PrimeiroNome} {ator.UltimoNome} atuou em {ator.Filmografia.Count} filmes")
+                }
+            }
+        }
+    }
+}COPIAR CÓDIGO
+Se preferir, também é possível fazê-lo deste forma:
+
+                    System.Console.WriteLine($"O ator {ator.PrimeiroNome + " " + ator.UltimoNome} atuou em {ator.Filmografia.Count} filmes")COPIAR CÓDIGO
+A seguir, incluiremos a relação que está sendo representada pela coleção Filmografia:
+
+                var atoresMaisAtuantes = contexto.Atores;
+                    .Include(a => a.Filmografia);COPIAR CÓDIGO
+Vemos que o Visual Studio indica a presença de um erro de compilação.
+
+Para corrigirmos, precisaremos incluir o namespace do Entity Framework Core. Faremos isso com o cursor sobre a palavra Include e utilizaremos o comando "Ctrl + .", em seguida, selecionaremos using Microsoft.EntityFrameworkCore.
+
+No código, resultará em:
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+                var atoresMaisAtuantes = contexto.Atores;
+                    .Include(a => a.Filmografia);
+
+                foreach (var ator in atoresMaisAtuantes)
+                {
+                    System.Console.WriteLine($"O ator {ator.PrimeiroNome} {ator.UltimoNome} atuou em {ator.Filmografia.Count} filmes")
+                }
+            }
+        }
+    }
+}COPIAR CÓDIGO
+Executaremos a aplicação.
+
+No console, obtivemos o seguinte retorno:
+
+Executing DbCommand [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [a.Filmografia].[film_id], [a.Filmografia].[actor_id], [a.Filmografia].[last_update]
+FROM [film_actor] AS [a.Filmografia]
+INNER JOIN (
+    SELECT [a0].[actor_id]
+    FROM [actor] AS [a0]
+) AS [t] ON [a.Filmografia].[actor_id] - [t].[actor_id]
+ORDER BY [t].[actor_id]
+
+Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [a.Filmografia].[film_id], [a.Filmografia].[actor_id], [a.Filmografia].[last_update]
+FROM [film_actor] AS [a.Filmografia]
+INNER JOIN (
+    SELECT [a0].[actor_id]
+    FROM [actor] AS [a0]
+)  AS [t] ON [a.Filmografia].[actor_id] - [t].[actor_id]
+ORDER BY [t].[actor_id]COPIAR CÓDIGO
+Onde vemos o select com o join para a tabela de film_actor, e a listagem com o nome do ator, com espaço entre o primeiro e último nomes, e com o total de filmes de cada um:
+
+O ator PENELOPE STALLONE atuou em 19 filmes.COPIAR CÓDIGO
+O próximo passo será isolarmos os Top 5, ou seja, os cinco primeiros com maior número de filmes.
+
+Retornaremos ao Program.cs.
+
+Primeiro, ordenaremos a lista pelo número de filmes, do maior para o menor. Depois, faremos a seleção dos cinco primeiros.
+
+Para ordenar, há um método chamado OrderByDescending:
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+                var atoresMaisAtuantes = contexto.Atores;
+                    .Include(a => a.Filmografia);
+                    .OrderByDescending();
+
+                foreach (var ator in atoresMaisAtuantes)
+                {
+                    System.Console.WriteLine($"O ator {ator.PrimeiroNome} {ator.UltimoNome} atuou em {ator.Filmografia.Count} filmes")
+                }
+            }
+        }
+    }
+}COPIAR CÓDIGO
+Quando o inserimos, surge a seguinte mensagem:
+
+CS1061 "IIncludableQueryable<Ator, IList<FilmeAtor>"não contém uma definição para "OrderByDescending" e não foi possível encontrar nenhum método de extensão "OrderByDescending"(...)COPIAR CÓDIGO
+Isso porque ainda não importamos o Linq.
+
+Para isso, pressionaremos as teclas "Ctrl + ." e selecionaremos "using System.Linq".
+
+A seguir declararemos a propriedade que servirá de parâmetro para a ordenação, que no caso será uma expressão lambda, indicando que será pelo total de filmes:
+
+OrderByDescending(a => a.Filmografia.Count);COPIAR CÓDIGO
+Resultando no código:
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+                var atoresMaisAtuantes = contexto.Atores;
+                    .Include(a => a.Filmografia);
+                    .OrderByDescending(a => a.Filmografia.Count);
+
+                foreach (var ator in atoresMaisAtuantes)
+                {
+                    System.Console.WriteLine($"O ator {ator.PrimeiroNome} {ator.UltimoNome} atuou em {ator.Filmografia.Count} filmes")
+                }
+            }
+        }
+    }
+}COPIAR CÓDIGO
+Executaremos a aplicação.
+
+A lista foi impressa no console, ordenada pelos atores que mais atuaram, de forma decrescente.
+
+Ao olharmos o Select, vemos que aumentou de complexidade:
+
+Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [a.Filmografia].[film_id], [a.Filmografia].[actor_id], [a.Filmografia].[last_update]
+FROM [film_actor] AS [a.Filmografia]
+INNER JOIN (
+    SELECT [a0].[actor_id], (
+    SELECT COUNT(*)
+    FROM [film_actor] AS [f0]
+    WHERE [a0].[actor_id] = [f0].[actor_id]
+) AS [c]
+    FROM [actor] AS [a0]
+)  AS [t] ON [a.Filmografia].[actor_id] - [t].[actor_id]
+ORDER BY [t].[actor_id]COPIAR CÓDIGO
+Há múltiplos selects, inclusive compostos.
+
+Retornaremos ao Program.cs.
+
+Para filtrarmos o top 5 (para o mundo relacional), utilizaremos a função Take, e especificaremos o número de elementos, no caso, 5.
+
+Inseriremos a função logo abaixo de OrderByDescending.
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+                var atoresMaisAtuantes = contexto.Atores;
+                    .Include(a => a.Filmografia);
+                    .OrderByDescending(a => a.Filmografia.Count);
+                    .Take(5)
+
+                foreach (var ator in atoresMaisAtuantes)
+                {
+                    System.Console.WriteLine($"O ator {ator.PrimeiroNome} {ator.UltimoNome} atuou em {ator.Filmografia.Count} filmes")
+                }
+            }
+        }
+    }
+}COPIAR CÓDIGO
+Executaremos o programa, e teremos como resultado:
+
+Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [a.Filmografia].[film_id], [a.Filmografia].[actor_id], [a.Filmografia].[last_update]
+FROM [film_actor] AS [a.Filmografia]
+INNER JOIN (
+    SELECT TOP(@__p_0) [a0].[actor_id], (
+        SELECT COUNT(*)
+        FROM [film_actor] AS [f1]
+        WHERE [a0].[actor_id] - [f1].[actor_id]
+    ) AS[c]
+    ORDER BY (
+        SELECT COUNT(*)
+        FROM [film_actor] AS [f0]
+        WHERE [a0].[actor_id] - [f0].[actor_id]
+    ) DESC, [a0].[actor_id]
+) AS [t] ON [a.Filmografia].[actor_id] - [t].[actor_id]
+ORDER BY [t].[c] DESC, [t].[actor_id]
+
+O ator SANDRA KILMER atuou em 37 filmes.
+O ator UMA WOOD atuou em 35 filmes.
+O ator VAL BOLGER atuou em 35 filmes.
+O ator RIP CRAWFORD atuou em 33 filmes.
+
+A data reader was disposed.
+
+O ator JULIA MCQUEEN atuou em 33 filmes.COPIAR CÓDIGO
+Com os cinco primeiros atores, com maior número de atuações, impressos em ordem decrescente.
+
+Concluímos a primeira parte da nossa página hipotética.
+
+O Select, no entanto, está complexo.
+
+O EF Core decidirá a melhor estratégia. Na versão 2.0 a performance está melhor do que comparado às versões anteriores. Antes, eram feitos vários selects em vez de apenas um.
+
+Ainda assim, o select feito não é a melhor solução possível.
+
+Podemos fazê-lo de um jeito que facilite, inclusive, o entendimento do que está acontecendo.
+
+Um ponto importante para considerarmos ao programar, é entender o código, escrevê-lo de um jeito que seja fácil de identificar os processos que ocorrem internamente.
+
+No caso, é o próprio Entity quem está gerando e o usuário não visualizaria isto, entretanto, se um terceiro logar, inserir em um arquivo de log, ficará visível.
+
+Faremos alterações para melhorar o select.
+
+Fecharemos o console.
+
+Clicaremos com o botão direito do mouse sobre o banco legado AluraFilmes, localizado em "Pesquisador de Objetos do SQL Server > SQL Server > (localdb\MSSQLLocalDB (SQL Server 13.0.4001 - DESKTOP-N51LB16\Caelum) > Banco de Dados > Banco de Dados do Sistema > AluraFilmes", e selecionaremos "Nova Consulta...".
+
+Surgirá uma nova janela, em branco, denominada SQLQuery3.sql.
+
+Nosso objetivo será elaborar um select melhor.
+
+Utilizaremos o método Group by.
+
+Haverá um selectda tabela actor, que, posteriormente, ganhará um label:
+
+select
+from actor aCOPIAR CÓDIGO
+E, faremos um join com a tabela de relacionamento film_actor, com o label fa. O vínculo entre film_actor e actor, é a chave estrangeira actor_id:
+
+select
+from actor a
+    inner join film_actor fa on fa.actor_id = a.actor_idCOPIAR CÓDIGO
+Pegaremos o primeiro nome a.first_name, o último nome a.last_name, e totalizaremos count(*) o número de linhas para cada primeiro e último nomes iguais.
+
+select a.first_name, a.last_name, count(*)
+from actor a
+    inner join film_actor fa on fa.actor_id = a.actor_idCOPIAR CÓDIGO
+Para agrupar isso, precisaremos de uma cláusula group by:
+
+select a.first_name, a.last_name, count(*)
+from actor a
+    inner join film_actor fa on fa.actor_id = a.actor_id
+group by a.first_name, a.last_nameCOPIAR CÓDIGO
+Além disso, queremos ordenar a lista pelo total de filmes, em ordem decrescente.
+
+Chamaremos o total, com as total, e utilizaremos o método order by:
+
+select a.first_name, a.last_name, count(*) as total
+from actor a
+    inner join film_actor fa on fa.actor_id = a.actor_id
+group by a.first_name, a.last_name
+order by total descCOPIAR CÓDIGO
+Faremos o top5:
+
+select top 5 a.first_name, a.last_name, count(*) as total
+from actor a
+    inner join film_actor fa on fa.actor_id = a.actor_id
+group by a.first_name, a.last_name
+order by total descCOPIAR CÓDIGO
+Executaremos o programa. Foi exibido o seguinte resultado:
+
+first_name	last_name	total
+SANDRA	KILMER	37
+VAL	BOLGER	35
+UMA	WOOD	35
+RIP	CRAWFORD	33
+JULIA	MCQUEEN	33
+Executaremos novamente a aplicação, onde visualizaremos os resultados obtidos anteriormente. Vemos que houve uma alteração na ordem, mas o resultado, efetivamente, foi o mesmo.
+
+Portanto, conseguimos fazer um select, único, e legível.
+
+Vamos priorizar a utilização deste.
+
+O dba pode, inclusive, utilizar mecanismos para melhorar a sua performance.
+
+Desligaremos a geração automática do SQL do Entity, e inseriremos o nosso.
+
+Copiaremos o código que acabamos de criar, para colarmos no programa.
+
+Abriremos o Program.cs.
+
+Criaremos uma variável chamada sql:
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+                var sql
+
+                var atoresMaisAtuantes = contexto.Atores;
+                    .Include(a => a.Filmografia);
+                    .OrderByDescending(a => a.Filmografia.Count);
+                    .Take(5)
+
+                foreach (var ator in atoresMaisAtuantes)
+                {
+                    System.Console.WriteLine($"O ator {ator.PrimeiroNome} {ator.UltimoNome} atuou em {ator.Filmografia.Count} filmes")
+                }
+            }
+        }
+    }
+}COPIAR CÓDIGO
+Colaremos o código que acabamos de copiar, dentro desta variável:
+
+var sql = @"select top 5 a.first_name, a.last_name, count(*) as total
+from actor a
+    inner join film_actor fa on fa.actor_id = a.actor_id
+group by a.first_name, a.last_name
+order by total desc"COPIAR CÓDIGO
+Temos o SQL que criamos, dentro de uma variável sql.
+
+Precisaremos "desligar" o controle do Entity para geração de SQL.
+
+Faremos isso com o método FromSql(), que terá como parâmetro o nome da variável que acabamos de criar.
+
+Executaremos o programa.
+
+Vemos que surgiu uma mensagem de erro.
+
+Exceção Sem Tratamento: System.InvalidOperationException: The required column 'actor_id' was not present in the results of a 'FromSql' opperation.COPIAR CÓDIGO
+A coluna actor_id exigida não está presente nos resultados da operação FromSql.
+
+O método FromSql tem certas limitações, que tentaremos contornar, para continuar utilizando-o. Veremos a solução para este problema, adiante.
+
+
+
+
+
+
+
+
+
+02 - FromSql e suas limitações
+Transcrição
+Anteriormente, falávamos que para utilizarmos o FromSql precisamos estar atentos à algumas limitações.
+
+Ao executarmos a aplicação criada em vídeos anteriores, foi exibida a seguinte mensagem de erro:
+
+Exceção Sem Tratamento: System.InvalidOperationException: The required column 'actor_id' was not present in the results of a 'FromSql' opperation.COPIAR CÓDIGO
+Indicando que a coluna actor_id não estaria presente nos resultados.
+
+Há uma página, na documentação do Entity Framewok Core, que trata desta necessidade de desligar a geração automática, para que possamos inserir nossos próprios SQLs.
+
+Isto é chamado de SQL puro, ou raw SQL queries.
+
+No texto, é ressaltada uma das situações em que pode ser necessário utilizar este recurso.
+
+Entity Framework Core allows you to drop sown to raw SQL queries when working with a relational database. This can be useful if the query you want to perform can't be expressed using LINQ, or if using a LINQ query is resulting in inefficient SQL being sent to the database.COPIAR CÓDIGO
+Em tradução livre, "isto pode ser útil se a query que você deseja executar não pode ser expressada usando LINQ, ou então, a query LINQ está resultando num SQL ineficiente no banco de dados".
+
+São duas situações comuns, nas quais pode acontecer de assumirmos a geração do SQL.
+
+Em seguida, há um tópico referente às limitações para utilização do FromSql.
+
+Limitaitons
+
+There are a couple of limitations to be aware of when using raw SQL queries:
+
+SQL queries can only be used to return types that are part of your model. There is an enhancement on our backlog to enable returning ad-hoc types from raw SQL queries.
+
+The SQL query must return data for all properties of the entity type.
+
+The column names in the result set must match the column names that properties are mapped to. Note this is different from EF6 where property/column mapping was ignored for raw SQL queries and result set column names had to match the property names.
+
+The SQL query cannot contain related data. However, in many cases you can compose on top of the query using the Include operator to return related data (see including related data).
+
+Em tradução livre, são elas:
+
+As queries só podem ser utilizadas para retornar tipos que estão sendo gerenciados pelo Entity. Inclusive, no backlog do EF há uma melhoria para remover esta limitação, mas isso ainda não é possível.
+
+A query deve retornar dados para todas as propriedades daquele tipo, daquela entidade.
+
+Sobre esta segunda, é o motivo pelo qual houve o erro com actor_id, que não estava presente.
+
+Continuando:
+
+O nome das colunas no resultado tem que ser o mesmo do SQL.
+Se estiver utilizando o SQL com algum tipo de renomeação, isso deverá ser repensado, uma vez que a limitação dita que o nome das colunas na query deve ser o mesmo das propriedades mapeadas no modelo.
+
+Por fim, temos:
+
+A query não pode conter dados relacionados, somente aqueles da entidade específica.
+Tentaremos superar estas limitações, fazendo algumas melhorias em nossa query, tornando-a mais eficiente.
+
+Ao final, precisamos de uma query que retorne apenas atores, um registro com os cinco primeiros que mais atuam, de acordo com a base de dados.
+
+Precisaremos de uma listagem que retorne apenas o actor_id, e fazer um select da tabela de ator com este subconjunto, para então termos a lista com cinco elementos.
+
+Abriremos a consulta que criamos, SQLQuery3.sql, para testarmos antes de inserirmos no programa:
+
+select top 5 a.first_name, a.last_name, count(*) as total
+from actor a
+    inner join film_actor fa on fa.actor_id = a.actor_id
+group by a.first_name, a.last_name
+order by total descCOPIAR CÓDIGO
+Utilizaremos duas queries.
+
+A primeira terá como objetivo retornar a chave primária e o total de filmes, e será denominada filmes:
+
+(select top 5 a.actor_id, count(*) as total
+from actor a
+    inner join film_actor fa on fa.actor_id = a.actor_id
+group by a.first_name, a.last_name) filmes
+order by total descCOPIAR CÓDIGO
+Em seguida criaremos um select:
+
+select a.*
+from actor a
+    inner join
+(select top 5 a.actor_id, count(*) as total
+from actor a
+    inner join film_actor fa on fa.actor_id = a.actor_id
+group by a.first_name, a.last_name) filmes
+order by total descCOPIAR CÓDIGO
+Utilizaremos a query filmes:
+
+select a.*
+from actor a
+    inner join
+(select top 5 a.actor_id, count(*) as total
+from actor a
+    inner join film_actor fa on fa.actor_id = a.actor_id
+group by a.first_name, a.last_name) filmes on filmes.actor_id = a.actor_id
+order by total descCOPIAR CÓDIGO
+Removeremos o total pois este virá da filmografia:
+
+select a.*
+from actor a
+    inner join
+(select top 5 a.actor_id
+from actor a
+    inner join film_actor fa on fa.actor_id = a.actor_id
+group by a.first_name, a.last_name) filmes on filmes.actor_id = a.actor_id
+order by total descCOPIAR CÓDIGO
+Teremos que ordenar a lista em ordem decrescente, moveremos a referência para dentro da query:
+
+select a.*
+from actor a
+    inner join
+(select top 5 a.actor_id
+from actor a
+    inner join film_actor fa on fa.actor_id = a.actor_id
+group by a.first_name, a.last_name
+order by total desc) filmes on filmes.actor_id = a.actor_idCOPIAR CÓDIGO
+Fizemos um join da tabela de ator com filmes, e teremos como retorno uma lista com os cinco mais atuantes. Sendo que o total será extraído da coleção filmografia.
+
+Executaremos a consulta.
+
+Recebemos a seguinte mensagem de erro:
+
+Mensagem B120, Nível 16, Estado 1, Linha 4
+Column 'actor.actor_id' is invalid in the selected list because it is not contained in either an aggregate function or the GROUP BY clause.COPIAR CÓDIGO
+Ou seja, actor.actor_id é inválido porque não está contido nem na função agregada, ou na cláusula de GROUP BY.
+
+Trocaremos a referida cláusula, onde antes havia:
+
+group by a.first_name, a.last_nameCOPIAR CÓDIGO
+Teremos agora:
+
+select a.*
+from actor a
+    inner join
+(select top 5 a.actor_id
+from actor a
+    inner join film_actor fa on fa.actor_id = a.actor_id
+group by a.actor_id
+order by total desc) filmes on filmes.actor_id = a.actor_idCOPIAR CÓDIGO
+Executaremos novamente.
+
+Obtivemos como resultado:
+
+actor_id	first_name	last_name	last_update
+23	SANDRA	KILMER	2006-02-15 04:34:33.000
+13	UMA	WOOD	2017-10-08 00:00:00.000
+37	VAL	BOLGER	2006-02-15 04:34:33.000
+26	RIP	CRAWFORD	2006-02-15 04:34:33.000
+27	JULIA	MCQUEEN	2006-02-15 04:34:33.000
+Após termos verificado que o select funciona, o copiaremos e colaremos na variável sql no Program.cs:
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+                var sql = @"select a.*
+                from actor a
+                  inner join
+                (select top 5 a.actor_id
+                from actor a
+                  inner join film_actor fa on fa.actor_id = a.actor_id
+                group by a.actor_id
+                order by total desc) filmes on filmes.actor_id = a.actor_id";
+
+                var atoresMaisAtuantes = contexto.Atores.FromSql(sql);
+
+                foreach (var ator in atoresMaisAtuantes)
+                {
+                    System.Console.WriteLine($"O ator {ator.PrimeiroNome} {ator.UltimoNome} atuou em {ator.Filmografia.Count} filmes.");
+                }
+
+            }
+        }
+    }
+}COPIAR CÓDIGO
+Executaremos o programa.
+
+Obtivemos como resultado:
+
+Executed DbCommand (8ms) [Parameters-[], CommandType-'Text', CommandTimeout-'30']
+
+select a.*
+    from actor a
+        inner join
+    (select top 5 a.actor_id, count(*) as total
+    from actor a
+        inner join film_actor fa on fa.actor_id - a.actor_id
+    group by a.actor_id
+    order by total desc) filmes on filmes.actor_id = a.actor_id
+
+O ator SANDRA KILMER atuou em 0 filmes.
+O ator UMA WOOD atuou em 0 filmes.
+O ator VAL BOLGER atuou em 0 filmes.
+O ator RIP CRAWFORD atuou em 0 filmes.
+O ator JULIA MCQUEEN atuou em 0 filmes.
+
+a data reader was disposed.COPIAR CÓDIGO
+Temos os cinco atores, mas não os números de filmes em que cada um atuou.
+
+Precisaremos incluir a relação entre filmes, representada por:
+
+.Include(a => a.Filmografia);COPIAR CÓDIGO
+Que será inserido na variável atoresMaisAtuantes:
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+                var sql = @"select a.*
+                from actor a
+                  inner join
+                (select top 5 a.actor_id
+                from actor a
+                  inner join film_actor fa on fa.actor_id = a.actor_id
+                group by a.actor_id
+                order by total desc) filmes on filmes.actor_id = a.actor_id";
+
+                var atoresMaisAtuantes = contexto.Atores
+                    .FromSql(sql)
+                    .Include(a => a.Filmografia);
+
+                foreach (var ator in atoresMaisAtuantes)
+                {
+                    System.Console.WriteLine($"O ator {ator.PrimeiroNome} {ator.UltimoNome} atuou em {ator.Filmografia.Count} filmes.");
+                }
+
+            }
+        }
+    }
+}COPIAR CÓDIGO
+Executaremos o programa.
+
+Teremos como resultado:
+
+O ator UMA WOOD atuou em 35 filmes.
+O ator SANDRA KILMER atuou em 37 filmes.
+O ator RIP CRAWFORD atuou em 33 filmes.
+O ator JULIA MCQUEEN atuou em 33 filmes.
+
+A data reader was disposed..
+
+O ator VAL BOLGER atuou em 35 filmes.COPIAR CÓDIGO
+Ou seja, a lista dos cinco atores que mais atuaram, em ordem decrescente.
+
+O select ainda ficou complexo:
+
+Executed DbCommand (8ms) [Parameters-[], CommandType-'Text', CommandTimeout-'30']
+SELECT [a.Filmografia].[film_id], [a.Filmografia].[actor_id], [a.Filmografia].[last_update]
+FROM [film_actor] AS [a.Filmografia]
+INNER COIN (
+        SELECT [a0].[actor_id]
+        FROM(
+    select a.*
+        from actor a
+            inner join
+        (select top 5 a.actor_id, count(*) as total
+        from actor a
+            inner join film_actor fa on fa.actor_id - a.actor_id
+        group by a.actor_id
+        order by total desc) filmes on filmes.actor_id = a.actor_id
+    ) AS [a0]
+) a [t] ON [a.Filmografia].[actor_id] = [t].[actor_id]
+ORDER BY [t].[actor_id]COPIAR CÓDIGO
+Isso porque foi necessário fazer o join com a coluna film_actor.
+
+Isso conclui a utilização do FromSql.
+
+Condsiderando as limitações dele, vemos que podemos ter problemas com a performance.
+
+Discutiremos mais sobre a questão do FromSql adiante.
+
+
+
+
+
+
+
+
+
+03 - Limitações do FromSql
+
+03
+Limitações do FromSql
+PRÓXIMA ATIVIDADE
+
+Marque as situações que representam as limitações que você deve conhecer quando for utilizar o método FromSql().
+
+
+Em uma classe com 3 propriedades, se o valor de uma delas não for atribuído, o método FromSql() lançará uma exceção.
+Mandou bem! A query SQL deve retornar valores para todas as propriedades da entidade.
+
+Um SELECT só pode retornar dados de uma classe que esteja sendo gerenciada pelo Entity.
+
+
+Isso aí! Queries SQL só podem ser utilizadas para retornar tipos que são entidades, ou seja, tipos que estão sendo gerenciados pelo EF.
+
+Alternativa correta
+As colunas que são listadas no SELECT devem possuir o mesmo nome que o nome das propriedades da entidade.
+
+
+Exato!
+
+
+
+
+
+
+
+
+
+04 - Qual o problema, Beto?
+PRÓXIMA ATIVIDADE
+
+Beto está fazendo um relatório e precisa controlar o SQL executado no banco. Fez o seguinte SELECT:
+
+select character_name as familia_bolseiro
+from lotr_characters
+where character_name like '%Baggins%'COPIAR CÓDIGO
+Quando executou o SQL com o método FromSql(), recebeu um erro.
+
+Você pode listar as limitações que estão sendo feridas no código do Beto?
+
+Selecione 2 alternativas
+
+Beto esqueceu que o FromSql() não permite que nomes das colunas sejam diferentes dos nomes das propriedades (no caso, familia_bolseiro).
+Beto esqueceu de listar todas as propriedades da classe Personagem no SELECT.
+
+
+
+
+
+
+05 - SQL sem limitação!
+PRÓXIMA ATIVIDADE
+
+Qual o SELECT que Beto deve usar para superar as limitações do exercício anterior?
+
+Selecione uma alternativa
+select *
+from lotr_characters
+where character_name like '%Baggins%'
+
+
+
+
+
+
+
+
+06 - Usando views com o Entity
+Transcrição
+Dando continuidade à construção do nosso select, no Program.cs, vemos que ele é complexo.
+
+var sql = @"select a.*
+from actor a
+    inner join
+(select top 5 a.actor_id, count(*) as total
+from actor a
+    inner join film_actor fa on fa.actor_id = a.actor_id
+group by a.actor_id
+order by total desc) filmes on filmes.actor_id = a.actor_id";COPIAR CÓDIGO
+Além disso, nosso SQL está inserido no código e, se precisarmos desta informação em outro lugar, teremos que copiar-lo para este novo lugar. Este gerenciamento não é satisfatório.
+
+O que costumamos ver na prática, é a inserção do SQL no banco de dados, e transformá-lo em uma visualização, ou view.
+
+Isso já está presente no nosso banco legado, disponível para importação, onde há uma pasta Exibições, localizada em "SQL Server > (localdb)\MSSQLLocalDB (SQL Server 13.0.4001 - DESKTOP-N51LB16\Caelum) > Banco de Dados > AluraFilmes > Exibições".
+
+Nela, encontramos a exibição chamada dbo.top5_most_starred_actors. Clicaremos duas vezes sobre ela, para abrirmos o arquivo.
+
+Nele encontraremos:
+
+---
+--- Structure for view top5_most_starred_actors
+---
+CREATE VIEW top5_most_starred_actors
+AS
+    select top 5 a.actor_id, a.first_name, a.last_name, count(fa.film_id) as total
+    from actor a
+        inner join film_actor fa on fa.actor_id = a.actor_id
+    group by a.actor_id, a.first_name, a.last_name
+    order by total descCOPIAR CÓDIGO
+Que contém o mesmo SQL que acabamos de criar.
+
+Esta view já existe, e a ideia agora é utilizá-la com nosso Entity.
+
+Na documentação do EF, há a informação de que view não é suportada por ele, mas que isso está no backlog para ser inserido no futuro. Ela ainda não é suportada nativamente, não podemos inserir a visualização e informar que ela populará determinada entidade.
+
+Podemos, utilizando o FromSql, empregar a view.
+
+Retornaremos ao Program.cs.
+
+Substituiremos o SQL lá presente. Será feito o select de from actor:
+
+contexto.LogSQLToConsole();
+
+var sql = @"select a.* from actor aCOPIAR CÓDIGO
+E faremos o inner join com a visualização top5_most_starred_actors, que estamos chamando de filmes:
+
+contexto.LogSQLToConsole();
+
+var sql = @"select a.* from actor a
+    inner join top5_most_starred_actors filmes on filmes.actor_id = a.actor_id";COPIAR CÓDIGO
+O join é feito somente por causa da limitação do FromSql, que determina que devemos retornar todas as colunas, que elas devem ter o mesmo nome, e que os registros têm que ser de algum tipo que seja gerenciado pelo Entity. Sem entidades relacionadas.
+
+Utilizamos a view e compartilhamos o select em outros locais na aplicação.
+
+Executaremos a aplicação.
+
+Vemos que não há nenhuma mensagem de erro, portanto, o programa funcionou.
+
+Como vemos no retorno, nosso select está melhor:
+
+Executed DbCommand (4ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+SELECT [a.Filmografia].[film_id], [a.Filmografia].[actor_id], [a.Filmografia].[last_update]
+FROM [film_actor] AS [a.Filmografia]
+INNER JOIN (
+    SELECT [a0].[actor_id]
+    FROM (
+            select a.* from actor a
+                inner join top5_most_starred_actors filmes on filmes.actor_id = a.actor_id
+    ) AS [a0]
+) AS [t] ON [a.Filmografia].[actor_id] = [t].[actor_id]
+ORDER BY [t].[actor_id]COPIAR CÓDIGO
+Além de estarmos utilizando a view que foi criada no banco legado.
+
+Sempre que tivermos uma situação como essa, de haver uma view no banco legado, podemos incorporá-la em um SQL utilizando o FromSQL.
+
+Isto conclui esta aula. Adiante, veremos os stored procedures.
+
+ DISCUTIR NO FORUM
+
+
+
+
+
+
+
+
+
+
+
+07 - Consolidando os conhecimentos
+PRÓXIMA ATIVIDADE
+
+Chegou a hora de você seguir todos os passos realizados por mim durante esta aula. Caso já tenha feito, excelente. Se ainda não, é importante que você execute o que foi visto no vídeo para poder continuar com o próximo capítulo.
+
+No próximo capítulo vamos discutir como integrar stored procedures em nossa aplicação. Te encontro lá!
+
+
+
+
+
+
+
+
+08 - O que aprendemos?
+PRÓXIMA ATIVIDADE
+
+Nessa aula você:
+
+descobriu que pode assumir o controle da geração do SQL através do método FromSql()
+conheceu as limitações que esse método possui e aprendeu dicas para superá-las
+analisou como integrar suas views na sua aplicação usando o FromSql()
+
+
+
+
+
+
+
+
+09 - Projeto da aula atual
+PRÓXIMA ATIVIDADE
+
+Baixe o código-fonte do projeto até o momento!

@@ -37,7 +37,7 @@ namespace Part02MapBDPreEexistente.Negocio
         }
 
 
-        //Sobrescrevendo o método ToString para que as informações de Titulo e Decricao do filme se tornem visíveis.
+        //Sobrescrevendo o método ToString para que as informações da entidade se tornem visíveis.
         public override string ToString()
         {
             return $"Ator ({Id}): {TituloFilme} {AnoLancamentoFilme}";

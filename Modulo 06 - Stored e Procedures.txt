@@ -1,0 +1,646 @@
+01 - Usando Stored Procedures
+Transcrição
+Olá!
+
+Este é o primeiro vídeo da aula sobre Stored Procedures.
+
+Abriremos nosso banco legado para podermos ver quais assuntos ainda precisamos abordar, para finalizar o curso.
+
+Selecionaremos no "Pesquisador de Objetos do SQL Server > SQL Server > (localdb)\MSSQLLocalDB (SQL Server 13.0.4001 - DESKTOP-N51LB16\Caelum) > Banco de Dados > AluraFilmes", o nosso banco legado.
+
+Feito isso, abriremos a pasta Tabelas dentro de AluraFilmes, que apresenta a seguinte lista de elementos:
+
+dbo._EFMigrationHistory
+dbo.actor
+dbo.category
+dbo.customer
+dbo.film
+dbo.film_actor
+dbo.film_category
+dbo.language
+dbo.staffCOPIAR CÓDIGO
+Vemos que já mapeamos quase todas elas, falta somente as categorias category e film_category.
+
+Elas fazem a relação entre filme e categoria.
+
+Um filme pode ser classificado em várias categorias, enquanto uma categoria pode conter diversos filmes.
+
+Trata-se de uma relação "m" para "n".
+
+Abriremos a tabela de categorias, dbo.category.
+
+Nela, vemos os seguintes valores:
+
+category_id	name	last_update
+1	Action	15/02/2016 04:46:27
+2	Animation	15/02/2016 04:46:27
+3	Children	15/02/2016 04:46:27
+4	Classics	15/02/2016 04:46:27
+5	Comedy	15/02/2016 04:46:27
+6	Documentary	15/02/2016 04:46:27
+7	Drama	15/02/2016 04:46:27
+8	Family	15/02/2016 04:46:27
+9	Foreign	15/02/2016 04:46:27
+10	Games	15/02/2016 04:46:27
+11	Horror	15/02/2016 04:46:27
+12	Music	15/02/2016 04:46:27
+13	New	15/02/2016 04:46:27
+14	Sci-Fi	15/02/2016 04:46:27
+15	Sports	15/02/2016 04:46:27
+16	Travel	15/02/2016 04:46:27
+NULL	NULL	NULL
+É possível verificar a quantidade de atores que atuaram em filmes de determinada categoria.
+
+Por exemplo, podemos ver quantos atores da nossa base de dados atuaram em filmes de ação.
+
+Esta informação já está programada em nosso banco de dados, em uma função.
+
+Na pasta Programação, localizada em "Pesquisador de Objetos do SQL Server > SQL Server > (localdb)\MSSQLLocalDB (SQL Server 13.0.4001 - DESKTOP-N51LB16\Caelum) > Banco de Dados > AluraFilmes > Programação", temos um procedimento armazenado (dentro de Procedimentos Armazenados), com esta informação. É o dbo.total_actors_from_given_category.
+
+Trata-se de uma stored procedure. Clicaremos duas vezes sobre ela, para abrirmos.
+
+Dentro, temos:
+
+--
+-- Structure for sp total_actors_from_given_category
+--
+CREATE PROCEDURE total_actors_from_given_category
+    @category_name varchar(25),
+    @total_actors int OUT
+AS
+BEGIN
+    SET @total_actors = (SELECT count(distinct a.actor_id)
+    from dbo.actor a
+    inner join film_actor fa on fa.actor_id = a.actor_id
+    inner join film f on f.film_id = fa.film_id
+    inner join film_category fc on fc.film.id = f.film_id
+    inner join category c on c.category_id = fc.category_id
+where c.name = @category_name);
+ENDCOPIAR CÓDIGO
+Que é, basicamente, um select que percorre quase todas as tabelas do sistema.
+
+A partir do nome de uma categoria, ele totaliza os atores distintos que já tiveram uma atuação em filmes pertencentes à ela.
+
+Uma stored procedure precisa de dois parâmetros, um de entrada, que é o nome da categoria, category_name. E, um de saída, que é o total de atores que atuaram em filmes de determinada categoria, total_actors.
+
+Como exemplo, criaremos uma nova consulta, onde executaremos o stored procedure que contém a seguinte sintaxe:
+
+execute total_actors_from_given_categoryCOPIAR CÓDIGO
+Deveremos declarar a categoria, onde queremos realizar a busca. No caso, "Action":
+
+execute total_actors_from_given_category 'Action'COPIAR CÓDIGO
+E, em seguida, o valor de saída, que está armazenado em uma variável do SQL Server chamada total:
+
+declare @total int
+execute total_actors_from_given_category 'Action', @total OUTCOPIAR CÓDIGO
+Por fim, deveremos enviar o valor para a saída:
+
+declare @total int
+execute total_actors_from_given_category 'Action', @total OUT
+select @totalCOPIAR CÓDIGO
+Executaremos a aplicação. Obtivemos o seguinte resultado:
+
+(nenhum nome de coluna)
+36COPIAR CÓDIGO
+Que é o número de atores, em nossa base de dados, que já atuaram em filmes de ação.
+
+Retornaremos ao Program.cs.
+
+Começaremos a programar no sentido inverso.
+
+Queremos que seja exibida, ao final, a seguinte mensagem: "O total de atores na categoria {} é de {}":
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+                                System.Console.WriteLine($"O total de atores na categoria {} é de {}.");
+
+                        }
+                }
+        }
+}COPIAR CÓDIGO
+Em seguida, definiremos os dois parâmetros que deixamos em branco, entre chaves, anteriormente.
+
+O primeiro é a categoria. Utilizaremos o exemplo dos filmes de ação, porque sabemos que o resultado deve ser 36:
+
+var categ = "Action"; //36COPIAR CÓDIGO
+Vamos inserir a categoria, em nossa frase:
+
+System.Console.WriteLine($"O total de atores na categoria {categ} é de {}.")COPIAR CÓDIGO
+Que ficará no código da seguinte forma:
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+                                var categ = "Action"; //36
+
+                                System.Console.WriteLine($"O total de atores na categoria {categ} é de {}.");
+
+                        }
+                }
+        }
+}COPIAR CÓDIGO
+Faremos agora o segundo parâmetro, para então executar o stored procedure.
+
+Para isso, no Entity, precisaremos utilizar uma propriedade do contexto chamada Database.
+
+Ela terá um método denominado ExecuteSqlCommand:
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+                                var categ = "Action"; //36
+
+                                contexto.Database
+                                    .ExecuteSqlCommand()
+
+                                System.Console.WriteLine($"O total de atores na categoria {categ} é de {}.");
+
+                        }
+                }
+        }
+}COPIAR CÓDIGO
+É possível que o método não esteja disponível para nós.
+
+Se digitarmos contexto.Database. e a opção ExecuteSqlCommand não surgir, significa que precisaremos importar este namespace, que fica no Microsoft.EntityFrameworkCore.
+
+Ele não fica disponível porque é um método de extensão.
+
+Serão exigidos determinados argumentos para que possamos executar este método.
+
+Precisaremos definir o comando SQL que queremos executar, neste caso, só conseguimos utilizar aqueles que são enviados para o banco - não é possível executar o select.
+
+Além disso, temos que determinar os parâmetros necessários para execução do comando SQL que acabamos de definir.
+
+No caso, o comando que queremos executar é aquele da consulta que acabamos de elaborar:
+
+declare @total int
+execute total_actors_from_given_category 'Action', @total OUT
+select @totalCOPIAR CÓDIGO
+Sendo que o comando SQL é representado, especificamente, pelo seguinte trecho:
+
+execute total_actors_from_given_category 'Action', @total OUTCOPIAR CÓDIGO
+Retornaremos ao Program.cs.
+
+Inseriremos o comando como parâmetro mas, antes, faremos uma alteração. Em vez de termos 'Action' como argumento, termos o parâmetro chamado categoria:
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+                                var categ = "Action"; //36
+
+                                contexto.Database
+                                    .ExecuteSqlCommand("execute total_actors_from_given_category @categoria, @total OUT");
+
+                                System.Console.WriteLine($"O total de atores na categoria {categ} é de {}.");
+
+                        }
+                }
+        }
+}COPIAR CÓDIGO
+A seguir, incluiremos os dois parâmetros, um de categoria paramCateg, e para o total paramTotal.
+
+.ExecuteSqlCommand("execute total_actors_from_given_category @categoria, @total OUT", paramCateg, paramTotal)COPIAR CÓDIGO
+Estas categorias que criamos têm que ser instâncias de SqlParameter, que é a representação de um parâmetro no SQL Server.
+
+Criaremos uma variável paramCateg, e importaremos o namespace System.Data.SqlClient.
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+                                var paramCateg = new SqlParameter();COPIAR CÓDIGO
+Em seguida incluiremos o parâmetro.
+
+O paramCateg é formado pelo nome category_name e pelo valor categ:
+
+var paramCateg = new SqlParameter("category_name", categ);COPIAR CÓDIGO
+Abaixo dela, seguindo no mesmo código, criaremos a variável paramTotal:
+
+var paramTotal = new SqlParameterCOPIAR CÓDIGO
+Ela é complicada, pois são necessários mais valores do que na anterior.
+
+Teremos o nome, total_actors.
+
+var paramTotal = new SqlParameter
+{
+    ParameterName = "@total_actors",
+}COPIAR CÓDIGO
+Deveremos informar que se trata de um parâmetro de saída, por meio do enumerado ParameterDirection
+
+var paramTotal = new SqlParameter
+{
+    ParameterName = "@total_actors",
+    Direction = System.Data.ParameterDirection.Output
+}COPIAR CÓDIGO
+Teremos ainda o tamanho do parâmetro, que no caso é 4.
+
+var paramTotal = new SqlParameter
+{
+    ParameterName = "@total_actors",
+    Size = 4,
+    Direction = System.Data.ParameterDirection.Output
+}COPIAR CÓDIGO
+Isso resulta no seguinte código:
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+                                var categ = "Action"; //36
+
+                                var paramCateg = new SqlParameter("category_name", categ);
+
+                                var paramTotal = new SqlParameter
+                                {
+                                    ParameterName = "@total_actors",
+                                    Size = 4,
+                                    Direction = System.Data.ParameterDirection.Output
+                                }
+
+                                contexto.Database
+                                    .ExecuteSqlCommand("total_actors_from_given_category @categoria, @total OUT", paramCateg, paramTotal);
+
+                                System.Console.WriteLine($"O total de atores na categoria {categ} é de {}.");
+
+                        }
+                }
+        }
+}COPIAR CÓDIGO
+Sendo que, o comando SQL que queremos executar é o seguinte:
+
+total_actors_from_given_category @categoria, @total OUTCOPIAR CÓDIGO
+Como já estamos executando acima, com ExecuteSqlCommand, podemos remover o execute que havíamos inserido no início do comando.
+
+Executaremos o programa.
+
+Surgiu um caixa de diálogo informando que há um erro de compilação.
+
+Faltou definirmos o último argumento, após categ, na seguinte frase:
+
+"O total de atores na categoria {categ} é de {}."COPIAR CÓDIGO
+Precisamos inserir o valor que estar no parâmetro de saída, que se chama paramTotal, utilizaremos também a propriedade chamada Value:
+
+"O total de atores na categoria {categ} é de {paramTotal.Value}."COPIAR CÓDIGO
+Executaremos a aplicação.
+
+Houve um erro, descrito abaixo:
+
+Exceção Sem Tratamento: System.Data.SqlClient.SqlException: Must declare the scalar variable "@categoria".COPIAR CÓDIGO
+O que significa que precisaremos declarar a variável escalar categoria.
+
+Para solucionar isso, inseriremos o nome do parâmetro de entrada, ou seja, category name e total_actors:
+
+.ExecuteSqlCommand("total_actors_from_given_category @category_name, @total_actors OUT", paramCateg, paramTotal);COPIAR CÓDIGO
+Tornaremos a executar a aplicação.
+
+Obtivemos como resultado a execução da stored procedure, sem erros.
+
+Executing DbCommand [Parameters=[category_name'?' (Size = 6), @total_actors='?' (Size = 4) (Direction = Output)], CommandType='Text', CommandTimeout='30']
+total_actors_from_given_category @category_name, @total_actors OUT
+
+Executed DbCommand (6ms) [Parameters=[category_name'?' (Size = 6), @total_actors='?' (Size = 4) (Direction = Output)], CommandType='Text', CommandTimeout='30']
+total_actors_from_given_category @category_name, @total_actors OUT
+
+O total de atores na categoria Action é de 36.COPIAR CÓDIGO
+Foi impressa a quantidade de atores que têm filmes na categoria Action, que é de 36.
+
+A execução do stored procedure, no Entity, pode utilizar o comando ExecuteSqlCommand.
+
+Nele, além de indicarmos o stored procedure, devemos inserir os parâmetros e o valor de cada um.
+
+Este processo varia de acordo com o provider, o banco banco de dados.
+
+Isto conclui a demonstração da utilização de stored procedures no EF. Apesar de limitado, conseguimos compartilhar um código no banco de dados em nossa aplicação.
+
+Espero vocês no próximo vídeo!
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+02 - SELECT no método ExecuteSqlCommand
+PRÓXIMA ATIVIDADE
+
+Qual será o resultado da execução do código abaixo:
+
+class Program
+{
+    static void Main(string[] args)
+    {
+        using (var contexto = new AluraFilmesContexto())
+        {
+            var sql = "select * from actor";
+            Console.WriteLine("Execução do SELECT...");
+            contexto.Database.ExecuteSqlCommand(sql);
+        }
+    }
+}COPIAR CÓDIGO
+Selecione uma alternativa
+
+
+A mensagem Execução do SELECT... será exibida no console.
+
+
+
+
+
+
+
+
+
+
+
+
+03 - Parâmetros de uma Stored Procedure
+PRÓXIMA ATIVIDADE
+
+Considere que existe uma stored procedure chamada valor_anual_faturamento que precisa de dois parâmetros: um de entrada chamado id_filial e outro de saída chamado valor.
+
+O código utilizado para declarar um método que busca o faturamento anual de uma filial passada como argumento de entrada está escrito abaixo.
+
+public double FaturamentoAnual(int idFilial)
+{
+  var paramFilial = new SqlParameter("id_filial", idFilial);
+  var paramTotal = new SqlParameter { ParameterName = "valor", Size = 4 };
+  contexto.Database.ExecuteSqlCommand("valor_anual_faturamento @id_filial, @valor");
+  return paramTotal.Value != null ? Convert.ToDouble(paramTotal.Value) : 0.0;
+}COPIAR CÓDIGO
+Marque as alternativas com os erros que impedem a correta execução do método.
+
+Selecione 2 alternativas
+
+No método ExecuteSqlCommand() é preciso informar que o parâmetro valor é de saída (valor_anual_faturamento @id_filial, @valor OUT).
+
+Na criação do parâmetro paramTotal é necessário informar sua direção (paramTotal.Direction = System.Data.ParameterDirection.Output).
+
+ DISCUTIR NO FORU
+
+
+
+
+
+
+
+
+
+
+04 - Enviando comandos INSERT, UPDATE e DELETE
+
+Transcrição
+Olá!
+
+Nesta aula faremos uma última observação sobre o comando ExecuteSqlCommand.
+
+Com ele, é possível executarmos as funções de insert, update e delete.
+
+Copiaremos o seguinte trecho de código, do Program.cs:
+
+var categ = "Action"; //36
+
+var paramCateg = new SqlParameter("category_name", categ);
+
+var paramTotal = new SqlParameter
+{
+    ParameterName = "@total_actors",
+    Size = 4,
+    Direction = System.Data.ParameterDirection.Output
+};
+
+contexto.Database
+    .ExecuteSqlCommand(
+        "total_actors_from_giver_category @category_name, @total_actors OUT",
+        paramCateg,
+        paramTotal);
+
+    System.Console.WriteLine($"O total de atores na categoria {categ} é de {paramTotal.Value};COPIAR CÓDIGO
+Em seguida, extrairemos para um método, no mesmo Program.cs, da seguinte forma:
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+            }
+        }
+
+        static void StoredProcedure(DbContext contexto)
+        {
+            var categ = "Action"; //36
+
+            var paramCateg = new SqlParameter("category_name", categ);
+
+            var paramTotal = new SqlParameter
+            {
+            ParameterName = "@total_actors",
+            Size = 4,
+            Direction = System.Data.ParameterDirection.Output
+            };
+
+            contexto.Database
+                .ExecuteSqlCommand(
+                "total_actors_from_giver_category @category_name, @total_actors OUT",
+                    paramCateg,
+                    paramTotal);
+
+            System.Console.WriteLine($"O total de atores na categoria {categ} é de {paramTotal.Value};
+    }
+}COPIAR CÓDIGO
+Desta forma o código permanecerá armazenado, para consultas futuras.
+
+Veremos como é possível executar comandos de insert, delete e update.
+
+Em primeiro lugar criaremos, ainda no Program.cs - abaixo do contexto - o seguinte comando, de insert.
+
+Incluiremos na tabela de idiomas language, na coluna name, línguas aleatórias iniciando com a palavra Teste.
+
+namespace Alura.Filmes.App
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            using (var contexto = new AluraFilmesContexto())
+            {
+                contexto.LogSQLToConsole();
+
+                var sql = "INSERT INTO language (name) VALUES ('Teste 1'), ('Teste 2'), ('Teste 3')COPIAR CÓDIGO
+Em seguida, criaremos um mecanismo para executar isto, utilizando o ExecuteSqlCommand:
+
+                var sql = "INSERT INTO language (name) VALUES ('Teste 1'), ('Teste 2'), ('Teste 3')
+                contexto.Database.ExecuteSqlCommand(sql);COPIAR CÓDIGO
+Este método possui um retorno do tipo inteiro, que mostra a quantidade de registros afetados pela execução, e que inseriremos na seguinte variável:
+
+var registros = contexto.Database.ExecuteSqlCommand(sql);COPIAR CÓDIGO
+Teremos uma mensagem exibindo o total de registros afetados:
+
+                var sql = "INSERT INTO language (name) VALUES ('Teste 1'), ('Teste 2'), ('Teste 3')
+                var registros = contexto.Database.ExecuteSqlCommand(sql);
+                System.Console.WriteLine($"O total de registros afetados é {registros}.");COPIAR CÓDIGO
+Faremos o deleteSql, porque não queremos que estes idiomas permaneçam no banco:
+
+                var sql = "INSERT INTO language (name) VALUES ('Teste 1'), ('Teste 2'), ('Teste 3')
+                var registros = contexto.Database.ExecuteSqlCommand(sql);
+                System.Console.WriteLine($"O total de registros afetados é {registros}.");
+
+                var deleteSql = "DELETE FROM language WHERE name LIKE 'Teste%'";
+                registros = contexto.Database.ExecuteSqlCommand(deleteSql);
+                System.Console.WriteLine($"O total de registros afetados é {registros}.");COPIAR CÓDIGO
+Ou seja, primeiro inseriremos alguns idiomas na base, com um registro do número de elementos incluídos, para, em seguida, deletar eles.
+
+Executaremos a aplicação.
+
+Surgiu a seguinte mensagem de erro:
+
+Exceção Sem Tratamento: System.Data.SqlClient.SqlException: Incorrect syntax near 'Teste';
+Unclosed quotation mark after the character string ')'.COPIAR CÓDIGO
+Indicando que uma das aspas, em Teste 2, não foi fechada. Faremos esta correção.
+
+Executaremos o programa novamente.
+
+Temos o seguinte retorno:
+
+Executing DbCommand [Parameters-[], CommandType='Text', CommandTimeout='30']
+INSERT INTO language (name) VALUES ('Teste 1'), ('Teste 2'), ('Teste 3')
+
+Executed DbCommand (3ms) [Parameters-[], CommandType='Text', CommandTimeout='30']
+INSERT INTO language (name) VALUES ('Teste 1'), ('Teste 2'), ('Teste 3')
+
+O total de registros afetados é 3.
+
+Executing DbCommand [Parameters=[], CommandType='Text', CommandTimeout='30']
+DELETE FROM language WHERE name LIKE 'Teste%'
+
+Executed DbCommand (0ms)
+[Parameters=[], CommandType='Text', CommandTimeout='30']
+DELETE FROM language WHERE name LIKE 'Teste%'
+
+O total de registros afetados é 3.COPIAR CÓDIGO
+Vemos que foi executado o insert e, em seguida, o delete.
+
+Desta forma demonstrando que o ExecuteSqlCommand também serve para executar estes tipos de comandos.
+
+
+
+
+
+
+
+
+
+
+05 - Retorno do método ExecuteSqlCommand
+PRÓXIMA ATIVIDADE
+
+Você verificou no vídeo anterior que o método ExecuteSqlComand() pode ser utilizado para executar métodos de atualização da base de dados, ou seja INSERT, UPDATE e DELETE. Também ouviu o instrutor explicar que esse método tem um retorno do tipo inteiro.
+
+O que representa esse valor retornado?
+
+Alternativa correta
+Quantidade de comandos executados.
+
+
+Alternativa correta
+Quantidade de registros afetados.
+
+
+Isso aí!
+
+Alternativa correta
+Quantidade de transações utilizadas.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+06 - Conclusão do curso
+Transcrição
+Olá!
+
+Como vimos, esta segunda parte do curso de Entity Framework Core Avançado foi dedicada à alguns tópicos do mundo relacional. Por exemplo, índices, restrições, views, stored procedures.
+
+Falamos também sobre como heranças e enumerados são mapeados pelo Entity.
+
+Discutimos o que fazer quando é necessário assumir o controle da geração do SQL.
+
+Mostramos algumas limitações do Entity, bem como sugestões de como superá-las.
+
+Parabéns pela conclusão do curso!
+
+Como sugestão de próximos passos, para integrar os conhecimentos de Entity, proponho utilizar algum framework de aplicação como, por exemplo, o ASP NET MVC.
+
+Na Alura temos diversos cursos dedicados à este framewrok, você pode conferir!
+
+Obrigada pela companhia.

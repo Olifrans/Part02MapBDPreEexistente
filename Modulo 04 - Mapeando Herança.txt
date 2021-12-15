@@ -713,3 +713,670 @@ Como podemos observar, as classes Cliente e Funcionario têm uma série de propr
 
 Isso nos remete ao conceito de herança, ou seja, temos uma classe abstrata, ancestral destas duas, que compartilha o código destas propriedades citadas acima. É o que veremos adiante.
 
+
+
+
+
+
+
+
+02 - Criando a classe ancestral Pessoa
+Transcrição
+Olá!
+
+Nesta aula, descobriremos como o Entity Framework lida com heranças.
+
+Para isso, implementaremos uma herança entre Funcionario e Cliente.
+
+Criaremos uma classe abstrata chamada Pessoa, que compartilhará estas propriedades para elas.
+
+Clicaremos com o botão direito do mouse sobre a pasta Negocio, e, em seguida, selecionaremos "Adicionar > Classe". Como dito anteriormente, a denominaremos como Pessoa.
+
+Uma vez criada, teremos o seguinte código como resultado:
+
+namespace Alura.Filmes.App.Negocio
+{
+    class Pessoa
+    {
+    }
+}COPIAR CÓDIGO
+Tornaremos a classe pública, inserindo public antes da palavra class.
+
+Retornaremos à classe Cliente, de onde copiaremos a parte do código que queremos compartilhar, colando dentro da classe Pessoa, com o seguinte resultado:
+
+public class Pessoa
+{
+    public byte Id { get; set; }
+    public string PrimeiroNome { get; set; }
+    public string UltimoNome { get; set; }
+    public string Email { get; set; }
+    public bool Ativo { get; set; }
+
+    public override string ToString()
+        {
+            return $"Cliente ({Id}): {PrimeiroNome} {UltimoNome} - {Ativo}";
+        }
+}COPIAR CÓDIGO
+Criaremos uma variável tipo, a partir da instância do seu tipo, e uma propriedade chamada Name:
+
+    public override string ToString()
+        {
+            var tipo = this.GetType().Name;
+            return $"Cliente ({Id}): {PrimeiroNome} {UltimoNome} - {Ativo}";
+        }
+}COPIAR CÓDIGO
+Colocaremos o tipo interpolado na string:
+
+    public override string ToString()
+        {
+            var tipo = this.GetType().Name;
+            return $"{tipo} ({Id}): {PrimeiroNome} {UltimoNome} - {Ativo}";
+        }
+}COPIAR CÓDIGO
+Retornaremos à classe Cliente, e faremos com que ela herde de Pessoa, da seguinte forma:
+
+namespace Alura.Filmes.App.Negocio
+{
+    public class Cliente : PessoaCOPIAR CÓDIGO
+O mesmo será feito com Funcionario:
+
+namespace Alura.Filmes.App.Negocio
+{
+    public class Funcionario : PessoaCOPIAR CÓDIGO
+Com isso, torna-se desnecessário incluirmos as propriedades individualmente dentro destas classes, elas ficarão da seguinte forma.
+
+A classe Cliente:
+
+namespace Alura.Filmes.App.Negocio
+{
+    public class Cliente : Pessoa
+    {
+    }
+}COPIAR CÓDIGO
+E a Funcionario:
+
+namespace Alura.Filmes.App.Negocio
+{
+    public class Funcionario : Pessoa
+    {
+    }
+}COPIAR CÓDIGO
+Isso conclui a criação da herança para compartilhamento das propriedades.
+
+Na classe Funcionario, há duas propriedades adicionais, que, provavelmente, têm por função fazer com que o funcionário se logue em algum sistema. São elas Login e Senha:
+
+public class Funcionario : Pessoa
+{
+    public string Login { get; set; }
+    public string Senha { get; set; }
+}COPIAR CÓDIGO
+Não estamos nos preocupando com questões de segurança, se a senha ficará aberta ou não, isto pode ser trabalhado em outro curso específico.
+
+Abriremos a AluraFilmesContexto, onde faremos a configuração de Pessoa, e Funcionario.
+
+Aplicaremos uma nova configuração, em cima de uma instância da classe FuncionarioConfiguration:
+
+modelBuilder.ApplyConfiguration(new FuncionarioConfiguration());COPIAR CÓDIGO
+O que, no código, ficará da seguinte forma:
+
+namespace Alura.Filmes.App.Dados
+{
+    public class AluraFilmesContexto : DbContext
+    {
+        public DbSet<Ator> Atores { get; set; }
+        public DbSet<Filme> Filmes { get; set; }
+        public DbSet<FilmeAtor> Elenco { get; set; }
+        public DbSet<Idioma> Idiomas { get; set; }
+        public DbSet<Cliente> Clientes { get; set; }
+        public DbSet<Funcionario> Funcionarios { get; set; }
+
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            optionsBuilder.UseSqlServer("Server=(localdb)\\mssqllocaldb;Database=AluraFilmes;Trusted_connection=true;");
+        }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.ApplyConfiguration(new AtorConfiguration());
+            modelBuilder.ApplyConfiguration(new FilmeConfiguration());
+            modelBuilder.ApplyConfiguration(new FilmeAtorConfiguration());
+            modelBuilder.ApplyConfiguration(new IdiomaConfiguration());
+            modelBuilder.ApplyConfiguration(new ClienteConfiguration());
+            modelBuilder.ApplyConfiguration(new FuncionarioConfiguration());
+        }
+    }
+}COPIAR CÓDIGO
+Utilizaremos o Visual Studio para a criação desta classe:
+
+namespace Alura.Filmes.App.Dados
+{
+    public class FuncionarioConfiguration : IEntityTypeConfiguration<objeto>
+    {
+    }
+}COPIAR CÓDIGO
+A interface é implementada para a entidade Funcionario:
+
+namespace Alura.Filmes.App.Dados
+{
+    public class FuncionarioConfiguration : IEntityTypeConfiguration<Funcionario>
+    {
+    }
+}COPIAR CÓDIGO
+Com o cursor sobre a palavra Funcionario, utilizaremos o atalho "Ctrl + ." e selecionaremos "using Alura.Filmes.App.Negocio", para importar o namespace de Negocio e, utilizando o mesmo comando novamente, selecionaremos desta vez a opção "Implementar Interface".
+
+namespace Alura.Filmes.App.Dados
+{
+    public class FuncionarioConfiguration : IEntityTypeConfiguration<Funcionario>
+    {
+        public void Configure(EntityTypeBuilder<Funcionario> builder)
+        {
+        }
+    }
+}COPIAR CÓDIGO
+A seguir, criaremos sua configuração. Copiaremos a configuração de Cliente e utilizaremos para a Funcionario.
+
+namespace Alura.Filmes.App.Dados
+{
+    public class FuncionarioConfiguration : IEntityTypeConfiguration<Funcionario>
+    {
+        public void Configure(EntityTypeBuilder<Funcionario> builder)
+        {
+                         builder
+                .Property(c => c.PrimeiroNome)
+                .HasColumnName("first_name")
+                .HasColumnType("varchar(45)")
+                .IsRequired();
+
+            builder
+                .Property(c => c.UltimoNome)
+                .HasColumnName("last_name")
+                .HasColumnType("varchar(45)")
+                .IsRequired();
+
+            builder
+                .Property(c => c.Email)
+                .HasColumnName("email")
+                .HasColumnType("varchar(50)");
+
+            builder
+                .Property(c => c.Ativo)
+                .HasColumnName("active");
+
+            builder
+                .Property<DateTime>("create_date")
+                .HasColumnType("datetime")
+                .HasDefaultValueSql("getdate()")
+                .IsRequired();
+
+            builder
+                .Property<DateTime>("last_update")
+                .HasColumnType("datetime")
+                .HasDefaultValueSql("getdate()")
+                .IsRequired();
+        }
+    }
+}COPIAR CÓDIGO
+Isso porque o mapeamento é o mesmo. O código de configuração é compartilhado, entre Cliente e Funcionario.
+
+Por esse motivo, criaremos uma classe herança.
+
+Clicaremos com o botão direito do mouse sobre a pasta Dados e, em seguida, "Adicionar > Classe". Daremos o nome de PessoaConfiguration.
+
+Uma vez criada, e após tonarmos a classe pública, teremos o seguinte código:
+
+namespace Alura.Filmes.App.Dados
+{
+    public class PessoaConfiguration
+    {
+    }
+}COPIAR CÓDIGO
+É a configuração da entidade Pessoa:
+
+public class PessoaConfiguration : IEntityTypeConfiguration<Pessoa>COPIAR CÓDIGO
+Para importarmos o IEntityTypeConfiguration, utilizaremos o atalho "Ctrl + ." e selecionaremos "using Microsoft.EntityFrameworkCore".
+
+Implementaremos o:
+
+public void Configure(EntityTypeBuilder<Pessoa> builder)COPIAR CÓDIGO
+Em:
+
+namespace Alura.Filmes.App.Dados
+{
+    public class PessoaConfiguration
+    {
+        public void Configure(EntityTypeBuilder<Pessoa> builder)
+        {
+
+        }
+    }
+}COPIAR CÓDIGO
+Nele, estarão presentes as seguintes configurações, que removemos de ClienteConfiguration:
+
+builder
+    .Property(c => c.PrimeiroNome)
+    .HasColumnName("first_name")
+    .HasColumnType("varchar(45)")
+    .IsRequired();
+
+builder
+    .Property(c => c.UltimoNome)
+    .HasColumnName("last_name")
+    .HasColumnType("varchar(45)")
+    .IsRequired();
+
+builder
+    .Property(c => c.Email)
+    .HasColumnName("email")
+    .HasColumnType("varchar(50");
+
+builder
+    .Property(c => c.Ativo)
+    .HasColumnName("active");COPIAR CÓDIGO
+Que, em PessoaConfiguration, ficará da seguinte forma:
+
+namespace Alura.Filmes.App.Dados
+{
+    public class PessoaConfiguration
+    {
+        public void Configure(EntityTypeBuilder<Pessoa> builder)
+        {
+            builder
+                .Property(c => c.PrimeiroNome)
+                .HasColumnName("first_name")
+                .HasColumnType("varchar(45)")
+                .IsRequired();
+
+            builder
+                .Property(c => c.UltimoNome)
+                .HasColumnName("last_name")
+                .HasColumnType("varchar(45)")
+                .IsRequired();
+
+            builder
+                .Property(c => c.Email)
+                .HasColumnName("email")
+                .HasColumnType("varchar(50");
+
+            builder
+                .Property(c => c.Ativo)
+                .HasColumnName("active");
+        }
+    }
+}COPIAR CÓDIGO
+Além destas, há ainda uma propriedade comum para ambas as classes, que é a shadow property last_update:
+
+            builder
+                .Property(c => c.Ativo)
+                .HasColumnName("active");
+
+            builder
+                .Property<DateTime>("last_update")
+                .HasColumnType("datetime")
+                .HasDefaultValueSql("getdate()")
+                .IsRequired();
+        }
+    }
+}COPIAR CÓDIGO
+Após este processo, a ClienteConfiguration ficou da seguinte forma:
+
+namespace Alura.Filmes.App.Dados
+{
+    public class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
+    {
+        public void Configure(EntityTypeBuilder<Cliente> builder)
+        {
+            builder.ToTable("customer");
+
+            builder
+                .Property(c => c.Id)
+                .HasColumnName("customer_id");
+
+            builder
+                .Property<DateTime>("create_date")
+                .HasColumnType("datetime")
+                .HasDefaultValueSql("getdate()")
+                .IsRequired();
+
+        }
+    }
+}COPIAR CÓDIGO
+Contendo somente a configuração específica para Cliente. Com uma tabela chamada customer, uma coluna customer_id, e, uma shadow property chamada create_date.
+
+Já FuncionarioConfiguration, terá também suas especificidades.
+
+Abriremos a configuração:
+
+namespace Alura.Filmes.App.Dados
+{
+    public class FuncionarioConfiguration : EntityTypeConfiguration<Funcionario>
+    {
+        public override void Configure(EntityTypeBuilder<Funcionario> builder)COPIAR CÓDIGO
+São elas a tabela staff:
+
+            builder.ToTable("staff");COPIAR CÓDIGO
+A expressão lambda na propriedade Id, que está mapeada para a coluna staff_id:
+
+            builder
+                .Property(f => f.Id)
+                .HasColumnName("staff_id");COPIAR CÓDIGO
+E, por fim, as propriedades de login e senha.
+
+A primeira está mapeada para uma coluna chamada username, e para um tipo varchar(16), sendo que é não nula:
+
+            builder
+                .Property(f => f.Login)
+                .HasColumnName("username")
+                .HasColumnType("varchar(16)")
+                .IsRequired();COPIAR CÓDIGO
+A propriedade senha é bastante parecida com a anterior, só que aqui teremos uma coluna e tipo diferentes, além de, neste caso, ela poder ser nula:
+
+            builder
+                .Property(f => f.Senha)
+                .HasColumnName("password")
+                .HasColumnType("varchar(40)");COPIAR CÓDIGO
+São estas as configurações específicas de Funcionario:
+
+            builder.ToTable("staff");
+
+            builder
+                .Property(f => f.Id)
+                .HasColumnName("staff_id");
+
+            builder
+                .Property(f => f.Login)
+                .HasColumnName("username")
+                .HasColumnType("varchar(16)")
+                .IsRequired();
+
+            builder
+                .Property(f => f.Senha)
+                .HasColumnName("password")
+                .HasColumnType("varchar(40)");COPIAR CÓDIGO
+Precisamos indicar a utilização do PessoaConfiguration tanto em Cliente quanto em Funcionario.
+
+Ainda em Funcionario, incluiremos a PessoaConfiguration:
+
+namespace Alura.Filmes.App.Dados
+{
+    public class FuncionarioConfiguration : PessoaConfiguration<Funcionario>
+    {
+        public override void Configure(EntityTypeBuilder<Funcionario> builder)
+        {
+            base.Configure(builder);
+
+            builder.ToTable("staff");
+
+            builder
+                .Property(f => f.Id)
+                .HasColumnName("staff_id");
+
+            builder
+                .Property(f => f.Login)
+                .HasColumnName("username")
+                .HasColumnType("varchar(16)")
+                .IsRequired();
+
+            builder
+                .Property(f => f.Senha)
+                .HasColumnName("password")
+                .HasColumnType("varchar(40)");
+        }
+    }
+}COPIAR CÓDIGO
+Para que funcione, precisaremos chamar o método Configure da classe base:
+
+base.Configure(builder);COPIAR CÓDIGO
+Vemos que, ao fazermos isto, surge a seguinte mensagem de erro:
+
+Argumento 1: não é possível converter de "Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<Alura.Filmes.App.Negocio.Funcionario>" para "Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<Alura.Filmes.App.Negocio.Pessoa>"COPIAR CÓDIGO
+Significando que não foi possível a conversão de Funcionario para Pessoa.
+
+Para corrigirmos isso, faremos uma alteração em PessoaConfiguration, permitindo a utilização do método Configure nas classes dependentes.
+
+Em PessoaConfiguration:
+
+namespace Alura.Filmes.App.Dados
+{
+    public class PessoaConfiguration : IEntityTypeConfiguration<Pessoa>COPIAR CÓDIGO
+Declararemos o tipo T, ou seja, genérico:
+
+    public class PessoaConfiguration<T> : IEntityTypeConfiguration<Pessoa>COPIAR CÓDIGO
+O próximo passo será restringirmos o tipo, dizendo que ele necessariamente herdará da classe Pessoa:
+
+    public class PessoaConfiguration<T> : IEntityTypeConfiguration<Pessoa> where T : PessoaCOPIAR CÓDIGO
+Seguindo, na void Configure, também declararemos o tipo T:
+
+namespace Alura.Filmes.App.Dados
+{
+    public class PessoaConfiguration<T> : IEntityTypeConfiguration<T> where T : Pessoa
+    {
+        public void Configure(EntityTypeBuilder<T> builder)COPIAR CÓDIGO
+Declararemos a Configure como virtual, para que possamos subscrever nas classes filhas:
+
+namespace Alura.Filmes.App.Dados
+{
+    public class PessoaConfiguration<T> : IEntityTypeConfiguration<T> where T : Pessoa
+    {
+        public virtual void Configure(EntityTypeBuilder<T> builder)COPIAR CÓDIGO
+Retornaremos a FuncionarioConfiguration.
+
+Declararemos a subscrição do método:
+
+namespace Alura.Filmes.App.Dados
+{
+    public class FuncionarioConfiguration : PessoaConfiguration
+    {
+        public override void Configure(EntityTypeBuilder<Funcionario> builder)COPIAR CÓDIGO
+E, que será herdado de PessoaConfiguration para o tipo Funcionario:
+
+namespace Alura.Filmes.App.Dados
+{
+    public class FuncionarioConfiguration : PessoaConfiguration<Funcionario>
+    {
+        public override void Configure(EntityTypeBuilder<Funcionario> builder)COPIAR CÓDIGO
+Desta forma, tudo passa a funcionar.
+
+Estamos chamando o método base Configure, passando o builder:
+
+base.Configure(builder);COPIAR CÓDIGO
+Abriremos a ClienteConfiguration:
+
+namespace Alura.Filmes.App.Dados
+{
+    public class ClienteConfiguration : IEntityTypeConfiguration<Cliente>COPIAR CÓDIGO
+E faremos o mesmo nesta classe.
+
+Substituiremos o IEntityType por Pessoa:
+
+    public class ClienteConfiguration : PessoaConfiguration<Cliente>COPIAR CÓDIGO
+Indicaremos que estamos subscrevendo o método Configure, com o public override:
+
+    public class ClienteConfiguration : PessoaConfiguration<Cliente>
+    {
+        public override void Configure(EntityTypeBuilder<Cliente> builder)COPIAR CÓDIGO
+E chamaremos o método base Configure, passando como argumento a instância de builder:
+
+    public class ClienteConfiguration : PessoaConfiguration<Cliente>
+    {
+        public override void Configure(EntityTypeBuilder<Cliente> builder)
+        {
+            base.Configure(builder);COPIAR CÓDIGO
+Abriremos o Program.cs:
+
+class Program
+{
+    static void Main(string[] args)
+    {
+        using (var contexto = new AluraFilmesContexto())
+        {
+            contexto.LogSQLToConsole();
+
+            Console.WriteLine("Clientes:");
+            foreach (var cliente in contexto.Cliente)
+            {
+                Console.WriteLine(cliente);
+            }
+
+            Console.WriteLine("\nFuncionários");
+            foreach (var func in contexto.Funcionarios)
+            {
+                Console.WriteLine(func);
+            }COPIAR CÓDIGO
+Com o atalho "Ctrl + F5" executaremos a aplicação.
+
+Vemos que o retorno foi o desejado, e que tudo está funcionando corretamente. Conseguimos listar os clientes e funcionários, sendo que, neste caso só há dois:
+
+Funcionario (1): Mike Hillyer - True
+Funcionario (2): Jon Stephens - TrueCOPIAR CÓDIGO
+Utilizamos a herança para compartilhar o código tanto das classes de negócio, quanto de configuração.
+
+Pode ser que surja uma dúvida referente à relevância do Entity para tudo isso. A herança foi utilizada somente como um recurso de compartilhamento de código, mas ainda não vimos convenções para ela. Isso será discutido adiante.
+
+
+
+
+
+
+03 - Convenção do entity para heranças
+Transcrição
+Nos vídeos anteriores, incluímos a classe Pessoa como base para Funcionario e Cliente. Além disso, compartilhamos seu código tanto para a configuração do Entity, quanto para as propriedades de Funcionario e Cliente.
+
+O programa funcionou, entretanto, ficamos com a expectativa de descobrir como o Entity trabalharia com heranças.
+
+O Entity, neste caso específico, não descobriu um tipo de herança. Isto só acontece quando há dois níveis hierárquicos, por exemplo, pai e filho. Se não incluirmos as classes que estão em níveis diferentes no contexto - ocasião em que elas serão gerenciadas pelo Entity -, não será detectada nenhuma hierarquia.
+
+No caso em que trabalhamos, havia as classes Funcionario e Cliente, que não estavam diretamente relacionadas, mas sim por um ancestral comum, a classe Pessoa. Só que, esta última, não foi inserida no contexto. Por isso, o Entity não foi capaz de descobrir uma hierarquia, ou herança, neste exemplo especificamente.
+
+Veremos com o EF trabalharia com heranças, caso tivéssemos incluído uma em nosso problema.
+
+As convenções do Entity para mapeamento de herança, são as seguintes:
+
+Em primeiro lugar, temos o padrão TPH, ou Table Per Hierarchy. No qual é criada apenas uma tabela por hierarquia. Será selecionada a classe mais ancestral, e criada uma tabela que incorpore todas as colunas de seus descendentes. Além disso, será criada mais uma coluna, para discriminar a origem de determinado registro.
+
+Este é o padrão do Entity, ao identificar uma herança.
+
+Em nosso exemplo, se tivéssemos colocado Pessoa dentro do contexto, ele tentaria criar uma tabela única. Isso não atende o nosso banco legado, já que ele contém duas tabelas.
+
+O segundo padrão, é um chamado TPC, ou Table Per Concrete Type, que cria uma tabela para cada classe concreta. Este método identifica as classes filhas e cria uma tabela para cada uma delas.
+
+É o que aconteceria com nosso exemplo, caso tivéssemos incluído a tabela de Pessoa.
+
+Por último, temos o padrão TPT, ou Table Per Type, onde é criada uma tabela para todos os tipos, ou seja, todos aqueles que fazem parte da hierarquia terão uma.
+
+São estes os três padrões utilizados pelo Entity Framework para herança.
+
+A má notícia, é que o EF Core ainda não suporta o segundo e terceiro padrões, ou seja, o TPC e TPT. Dentro de uma hierarquia, ele trabalhará somente com o TPH, criando uma única tabela.
+
+Uma solução que pode ser utilizada é excluir a tabela ancestral do Entity, do contexto, assim não será identificada uma herança, e será possível trabalhar com tabelas por tipos concretos.
+
+Lembrando que, nos vídeos anteriores, não utilizamos herança no Entity. Apenas vimos o funcionamento para discutir como que ele faria isso.
+
+
+
+
+
+
+
+
+
+
+
+04 - Descobrindo pais e filhos
+PRÓXIMA ATIVIDADE
+
+Considere a seguinte herança:
+
+public class Conta
+{
+    public int Id { get; set; }
+    public string Titular { get; set; }
+    public double Saldo { get; set; }
+}
+
+public class ContaCorrente : Conta
+{
+    public double Tarifa { get; set; }
+}
+
+public class ContaPoupanca : Conta
+{
+    public double Rendimento { get; set; }
+}COPIAR CÓDIGO
+Qual declaração de classe contexto abaixo vai fazer com que o Entity descubra a herança acima, criando apenas uma tabela para adequar os dois tipos (corrente e poupança)?
+
+Selecione uma alternativa
+
+public class BancoContexto
+{
+  public DbSet<Conta> Contas { get; set; }
+  public DbSet<ContaCorrente> CC{ get; set; }
+  public DbSet<ContaPoupanca> CP { get; set; }
+  //...outros métodos...
+}
+
+
+
+
+
+
+
+
+05 - Padrões que o Entity utiliza para mapeamento de heranças, parte I
+PRÓXIMA ATIVIDADE
+
+Observe as afirmações abaixo em relação ao mapeamento da herança pelo Entity e selecione a alternativa correta.
+
+Nesse padrão, o Entity cria uma tabela para cada tipo concreto na hierarquia de tipos.
+Cria uma única tabela para armazenar os registros de toda a hierarquia de tipos. Para isso, precisará adicionar uma coluna para definir o tipo daquele registro.
+O Entity cria uma tabela para cada tipo participante da hierarquia de tipos.
+Selecione uma alternativa
+
+
+TPC - Table per Concrete Class
+TPH - Table per Hierarchy
+TPT - Table per Type
+
+
+
+
+
+
+06 - Padrões que o Entity utiliza para mapeamento de heranças parte 2
+PRÓXIMA ATIVIDADE
+
+Dos padrões de mapeamento de herança, marque a única alternativa que o EF Core atualmente suporta (versão 2.0).
+
+Alternativa correta
+TPH - Table per Hierarchy
+
+
+
+
+
+
+
+07 - Consolidando os conhecimentos
+PRÓXIMA ATIVIDADE
+
+Chegou a hora de você seguir todos os passos realizados por mim durante esta aula. Caso já tenha feito, excelente. Se ainda não, é importante que você execute o que foi visto no vídeo para poder continuar com o próximo capítulo.
+
+No próximo capítulo vamos discutir o que fazer quando precisamos assumir o controle do SQL. Te encontro lá!
+
+
+
+
+
+08 - O que aprendemos?
+PRÓXIMA ATIVIDADE
+
+Nessa aula você aprendeu as convenções para mapeamento de heranças no Entity.
+
+
+
+
+
+09 - Projeto da aula atual
+PRÓXIMA ATIVIDADE
+
+Baixe o código-fonte do projeto até o momento!
+https://caelum-online-public.s3.amazonaws.com/706-efcore2/04/Alura.Filmes.Aula10.zip

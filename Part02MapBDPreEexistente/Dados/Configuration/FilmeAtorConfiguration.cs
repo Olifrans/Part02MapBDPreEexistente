@@ -14,9 +14,10 @@ namespace Part02MapBDPreEexistente.Dados.Configuration
 
             builder.Property<int>("actor_id").IsRequired(); //shadow property
             builder.Property<int>("film_id").IsRequired(); //shadow property
-            builder.Property<DateTime>("last_update") //propriedade a ser configurada é uma shadow property, ou seja ela, não existe na classe de negócio
+
+            builder.Property<DateTime>("last_update") //Shadow Property
               .HasColumnType("datetime")
-              .HasDefaultValueSql("getdate()") //Setando um valor padão  para Property Shadow Property
+              .HasDefaultValueSql("getdate()") //Vlor padão  Shadow Property
               .IsRequired();
 
             builder.HasKey("film_id", "actor_id");
@@ -32,7 +33,6 @@ namespace Part02MapBDPreEexistente.Dados.Configuration
                 .HasOne(fa => fa.Ator)
                 .WithMany(f => f.Filmografia)
                 .HasForeignKey("actor_id");
-
         }
     }
 }
